@@ -1,0 +1,140 @@
+// use prisma-next
+
+enum EventStatus {
+  DRAFT
+  PLANNING
+  PRE_PRODUCTION
+  READY
+  LIVE
+  COMPLETED
+  ARCHIVED
+  ON_HOLD
+  CANCELLED
+}
+
+enum UserRole {
+  OWNER
+  ADMIN
+  PRODUCER
+  PRODUCTION_MANAGER
+  DEPARTMENT_HEAD
+  CREW
+  VIEWER
+}
+
+enum DepartmentType {
+  AUDIO
+  LIGHTING
+  VIDEO
+  STAGE
+  POWER
+  RIGGING
+  STREAMING
+  SPECIAL_EFFECTS
+  SECURITY
+  TRANSPORT
+  OTHER
+}
+
+model Organization {
+  id        Int      @id @default(autoincrement())
+  name      String
+  slug      String   @unique
+  createdAt TimestamptzString @default(now())
+  updatedAt temporal.updatedAtString()
+
+  users   User[]
+  clients Client[]
+  venues  Venue[]
+  events  Event[]
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  username  String?  @unique
+  name      String?
+  role      UserRole @default(CREW)
+
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  organizationId Int
+
+  createdEvents Event[] @relation("EventCreatedBy")
+
+  createdAt TimestamptzString @default(now())
+  updatedAt temporal.updatedAtString()
+}
+
+model Client {
+  id        Int      @id @default(autoincrement())
+  name      String
+  company   String?
+  email      String?
+  phone      String?
+  notes      String?
+
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  organizationId Int
+
+  events Event[]
+
+  createdAt TimestamptzString @default(now())
+  updatedAt temporal.updatedAtString()
+}
+
+model Venue {
+  id        Int      @id @default(autoincrement())
+  name      String
+  address   String?
+  city      String?
+  capacity  Int?
+  notes     String?
+
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  organizationId Int
+
+  events Event[]
+
+  createdAt TimestamptzString @default(now())
+  updatedAt temporal.updatedAtString()
+}
+
+model Event {
+  id          Int         @id @default(autoincrement())
+  name        String
+  description String?
+  status      EventStatus @default(DRAFT)
+
+  startDate TimestamptzString
+  endDate   TimestamptzString
+
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  organizationId Int
+
+  client   Client? @relation(fields: [clientId], references: [id])
+  clientId Int?
+
+  venue   Venue? @relation(fields: [venueId], references: [id])
+  venueId Int?
+
+  createdBy   User @relation("EventCreatedBy", fields: [createdById], references: [id])
+  createdById Int
+
+  departments Department[]
+
+  createdAt TimestamptzString @default(now())
+  updatedAt temporal.updatedAtString()
+}
+
+model Department {
+  id        Int            @id @default(autoincrement())
+  name      String
+  type      DepartmentType
+  notes     String?
+
+  event   Event @relation(fields: [eventId], references: [id])
+  eventId Int
+
+  createdAt TimestamptzString @default(now())
+  updatedAt temporal.updatedAtString()
+}
