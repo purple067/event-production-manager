@@ -8,6 +8,14 @@
       "model": "Client",
       "namespace": "public"
     },
+    "crewAssignment": {
+      "model": "CrewAssignment",
+      "namespace": "public"
+    },
+    "crewMember": {
+      "model": "CrewMember",
+      "namespace": "public"
+    },
     "department": {
       "model": "Department",
       "namespace": "public"
@@ -33,6 +41,73 @@
     "namespaces": {
       "public": {
         "enum": {
+          "AssignmentStatus": {
+            "codecId": "pg/text@1",
+            "members": [
+              {
+                "name": "PLANNED",
+                "value": "PLANNED"
+              },
+              {
+                "name": "CONFIRMED",
+                "value": "CONFIRMED"
+              },
+              {
+                "name": "CHECKED_IN",
+                "value": "CHECKED_IN"
+              },
+              {
+                "name": "COMPLETED",
+                "value": "COMPLETED"
+              },
+              {
+                "name": "CANCELLED",
+                "value": "CANCELLED"
+              },
+              {
+                "name": "NO_SHOW",
+                "value": "NO_SHOW"
+              }
+            ]
+          },
+          "CrewStatus": {
+            "codecId": "pg/text@1",
+            "members": [
+              {
+                "name": "ACTIVE",
+                "value": "ACTIVE"
+              },
+              {
+                "name": "INACTIVE",
+                "value": "INACTIVE"
+              },
+              {
+                "name": "ON_LEAVE",
+                "value": "ON_LEAVE"
+              }
+            ]
+          },
+          "CrewType": {
+            "codecId": "pg/text@1",
+            "members": [
+              {
+                "name": "EMPLOYEE",
+                "value": "EMPLOYEE"
+              },
+              {
+                "name": "FREELANCER",
+                "value": "FREELANCER"
+              },
+              {
+                "name": "CONTRACTOR",
+                "value": "CONTRACTOR"
+              },
+              {
+                "name": "INTERN",
+                "value": "INTERN"
+              }
+            ]
+          },
           "DepartmentType": {
             "codecId": "pg/text@1",
             "members": [
@@ -290,6 +365,373 @@
               "table": "client"
             }
           },
+          "CrewAssignment": {
+            "fields": {
+              "assignmentStatus": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                },
+                "valueSet": {
+                  "entityKind": "enum",
+                  "entityName": "AssignmentStatus",
+                  "namespaceId": "public",
+                  "plane": "domain"
+                }
+              },
+              "callTime": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "crewMemberId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "departmentId": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "eventId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "notes": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "rate": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/numeric@1",
+                  "kind": "scalar"
+                }
+              },
+              "rateUnit": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "releaseTime": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "role": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "updatedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "crewMember": {
+                "cardinality": "N:1",
+                "on": {
+                  "localFields": [
+                    "crewMemberId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "CrewMember",
+                  "namespace": "public"
+                }
+              },
+              "department": {
+                "cardinality": "N:1",
+                "on": {
+                  "localFields": [
+                    "departmentId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Department",
+                  "namespace": "public"
+                }
+              },
+              "event": {
+                "cardinality": "N:1",
+                "on": {
+                  "localFields": [
+                    "eventId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Event",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "assignmentStatus": {
+                  "column": "assignmentStatus"
+                },
+                "callTime": {
+                  "column": "callTime"
+                },
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "crewMemberId": {
+                  "column": "crewMemberId"
+                },
+                "departmentId": {
+                  "column": "departmentId"
+                },
+                "eventId": {
+                  "column": "eventId"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "notes": {
+                  "column": "notes"
+                },
+                "rate": {
+                  "column": "rate"
+                },
+                "rateUnit": {
+                  "column": "rateUnit"
+                },
+                "releaseTime": {
+                  "column": "releaseTime"
+                },
+                "role": {
+                  "column": "role"
+                },
+                "updatedAt": {
+                  "column": "updatedAt"
+                }
+              },
+              "namespaceId": "public",
+              "table": "crewAssignment"
+            }
+          },
+          "CrewMember": {
+            "fields": {
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "crewType": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                },
+                "valueSet": {
+                  "entityKind": "enum",
+                  "entityName": "CrewType",
+                  "namespaceId": "public",
+                  "plane": "domain"
+                }
+              },
+              "designation": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "email": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "name": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "notes": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "organizationId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "phone": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "skills": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "status": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                },
+                "valueSet": {
+                  "entityKind": "enum",
+                  "entityName": "CrewStatus",
+                  "namespaceId": "public",
+                  "plane": "domain"
+                }
+              },
+              "updatedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "assignments": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "crewMemberId"
+                  ]
+                },
+                "to": {
+                  "model": "CrewAssignment",
+                  "namespace": "public"
+                }
+              },
+              "organization": {
+                "cardinality": "N:1",
+                "on": {
+                  "localFields": [
+                    "organizationId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Organization",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "crewType": {
+                  "column": "crewType"
+                },
+                "designation": {
+                  "column": "designation"
+                },
+                "email": {
+                  "column": "email"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "name": {
+                  "column": "name"
+                },
+                "notes": {
+                  "column": "notes"
+                },
+                "organizationId": {
+                  "column": "organizationId"
+                },
+                "phone": {
+                  "column": "phone"
+                },
+                "skills": {
+                  "column": "skills"
+                },
+                "status": {
+                  "column": "status"
+                },
+                "updatedAt": {
+                  "column": "updatedAt"
+                }
+              },
+              "namespaceId": "public",
+              "table": "crewMember"
+            }
+          },
           "Department": {
             "fields": {
               "createdAt": {
@@ -349,6 +791,21 @@
               }
             },
             "relations": {
+              "crewAssignments": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "departmentId"
+                  ]
+                },
+                "to": {
+                  "model": "CrewAssignment",
+                  "namespace": "public"
+                }
+              },
               "event": {
                 "cardinality": "N:1",
                 "on": {
@@ -517,6 +974,21 @@
                   "namespace": "public"
                 }
               },
+              "crewAssignments": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "eventId"
+                  ]
+                },
+                "to": {
+                  "model": "CrewAssignment",
+                  "namespace": "public"
+                }
+              },
               "departments": {
                 "cardinality": "1:N",
                 "on": {
@@ -657,6 +1129,21 @@
                 },
                 "to": {
                   "model": "Client",
+                  "namespace": "public"
+                }
+              },
+              "crewMembers": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "organizationId"
+                  ]
+                },
+                "to": {
+                  "model": "CrewMember",
                   "namespace": "public"
                 }
               },
@@ -1078,6 +1565,320 @@
                   ],
                   "name": "client_organizationId_idx_2e17ef41",
                   "prefix": "client_organizationId_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": []
+            },
+            "crewAssignment": {
+              "checks": [
+                {
+                  "expression": "\"assignmentStatus\" IN ('PLANNED', 'CONFIRMED', 'CHECKED_IN', 'COMPLETED', 'CANCELLED', 'NO_SHOW')",
+                  "name": "crewAssignment_assignmentStatus_check_8d18568e",
+                  "prefix": "crewAssignment_assignmentStatus_check"
+                }
+              ],
+              "columns": {
+                "assignmentStatus": {
+                  "codecId": "pg/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": "PLANNED"
+                  },
+                  "nativeType": "text",
+                  "nullable": false,
+                  "valueSet": {
+                    "entityKind": "valueSet",
+                    "entityName": "AssignmentStatus",
+                    "namespaceId": "public",
+                    "plane": "storage"
+                  }
+                },
+                "callTime": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
+                },
+                "createdAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "crewMemberId": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "departmentId": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": true
+                },
+                "eventId": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "expression": "autoincrement()",
+                    "kind": "function"
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "notes": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "rate": {
+                  "codecId": "pg/numeric@1",
+                  "nativeType": "numeric",
+                  "nullable": true
+                },
+                "rateUnit": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "releaseTime": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
+                },
+                "role": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "updatedAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [
+                {
+                  "source": {
+                    "columns": [
+                      "crewMemberId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "crewAssignment"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "crewMember"
+                  }
+                },
+                {
+                  "source": {
+                    "columns": [
+                      "eventId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "crewAssignment"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "event"
+                  }
+                },
+                {
+                  "source": {
+                    "columns": [
+                      "departmentId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "crewAssignment"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "department"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "crewMemberId"
+                  ],
+                  "name": "crewAssignment_crewMemberId_idx_307a1f62",
+                  "prefix": "crewAssignment_crewMemberId_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "departmentId"
+                  ],
+                  "name": "crewAssignment_departmentId_idx_8e261ed8",
+                  "prefix": "crewAssignment_departmentId_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "eventId"
+                  ],
+                  "name": "crewAssignment_eventId_idx_6a266d47",
+                  "prefix": "crewAssignment_eventId_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": []
+            },
+            "crewMember": {
+              "checks": [
+                {
+                  "expression": "\"crewType\" IN ('EMPLOYEE', 'FREELANCER', 'CONTRACTOR', 'INTERN')",
+                  "name": "crewMember_crewType_check_defef05d",
+                  "prefix": "crewMember_crewType_check"
+                },
+                {
+                  "expression": "\"status\" IN ('ACTIVE', 'INACTIVE', 'ON_LEAVE')",
+                  "name": "crewMember_status_check_2ace4085",
+                  "prefix": "crewMember_status_check"
+                }
+              ],
+              "columns": {
+                "createdAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "crewType": {
+                  "codecId": "pg/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": "FREELANCER"
+                  },
+                  "nativeType": "text",
+                  "nullable": false,
+                  "valueSet": {
+                    "entityKind": "valueSet",
+                    "entityName": "CrewType",
+                    "namespaceId": "public",
+                    "plane": "storage"
+                  }
+                },
+                "designation": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "email": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "id": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "expression": "autoincrement()",
+                    "kind": "function"
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "name": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "notes": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "organizationId": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "phone": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "skills": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "status": {
+                  "codecId": "pg/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": "ACTIVE"
+                  },
+                  "nativeType": "text",
+                  "nullable": false,
+                  "valueSet": {
+                    "entityKind": "valueSet",
+                    "entityName": "CrewStatus",
+                    "namespaceId": "public",
+                    "plane": "storage"
+                  }
+                },
+                "updatedAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [
+                {
+                  "source": {
+                    "columns": [
+                      "organizationId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "crewMember"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "organization"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "organizationId"
+                  ],
+                  "name": "crewMember_organizationId_idx_2e17ef41",
+                  "prefix": "crewMember_organizationId_idx",
                   "unique": false
                 }
               ],
@@ -1635,6 +2436,34 @@
             }
           },
           "valueSet": {
+            "AssignmentStatus": {
+              "kind": "valueSet",
+              "values": [
+                "PLANNED",
+                "CONFIRMED",
+                "CHECKED_IN",
+                "COMPLETED",
+                "CANCELLED",
+                "NO_SHOW"
+              ]
+            },
+            "CrewStatus": {
+              "kind": "valueSet",
+              "values": [
+                "ACTIVE",
+                "INACTIVE",
+                "ON_LEAVE"
+              ]
+            },
+            "CrewType": {
+              "kind": "valueSet",
+              "values": [
+                "EMPLOYEE",
+                "FREELANCER",
+                "CONTRACTOR",
+                "INTERN"
+              ]
+            },
             "DepartmentType": {
               "kind": "valueSet",
               "values": [
@@ -1683,10 +2512,10 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "0cbf8c461229cd3bb9ade26cacd9674a22f8ef02d5775766272dfdb2db3818e3"
+    "storageHash": "f3310cca4652d6bb83e3a7892010b55449414de60b4577c172c5ae35ea44dbdc"
   },
   "execution": {
-    "executionHash": "9122207a3bb17b4a93200ea3f49a5782de22f79d77e0c59e3ddce490fc571e84",
+    "executionHash": "79594211fc7501b2480d9a168835681741135f4ee422d6097bbc00df6317e33a",
     "mutations": {
       "defaults": [
         {
@@ -1702,6 +2531,36 @@
             "column": "updatedAt",
             "namespace": "public",
             "table": "client"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "onUpdate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "ref": {
+            "column": "updatedAt",
+            "namespace": "public",
+            "table": "crewAssignment"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "onUpdate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "ref": {
+            "column": "updatedAt",
+            "namespace": "public",
+            "table": "crewMember"
           }
         },
         {
