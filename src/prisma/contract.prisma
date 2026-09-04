@@ -1,3 +1,4 @@
+
 // use prisma-next
 
 enum EventStatus {
@@ -58,6 +59,32 @@ enum AssignmentStatus {
   NO_SHOW
 }
 
+enum EquipmentStatus {
+  AVAILABLE
+  IN_USE
+  RESERVED
+  MAINTENANCE
+  DAMAGED
+  LOST
+  RETIRED
+}
+
+enum EquipmentCondition {
+  EXCELLENT
+  GOOD
+  FAIR
+  DAMAGED
+  NON_FUNCTIONAL
+}
+
+enum EquipmentOwnership {
+  OWNED
+  RENTED
+  LEASED
+  CLIENT_PROVIDED
+  VENDOR_PROVIDED
+}
+
 model Organization {
   id        Int      @id @default(autoincrement())
   name      String
@@ -65,11 +92,13 @@ model Organization {
   createdAt TimestamptzString @default(now())
   updatedAt temporal.updatedAtString()
 
-  users       User[]
-  clients     Client[]
-  venues      Venue[]
-  events      Event[]
-  crewMembers CrewMember[]
+  users               User[]
+  clients             Client[]
+  venues              Venue[]
+  events              Event[]
+  crewMembers         CrewMember[]
+  equipmentCategories EquipmentCategory[]
+  equipment            Equipment[]
 }
 
 model User {
@@ -143,8 +172,9 @@ model Event {
   createdBy   User @relation("EventCreatedBy", fields: [createdById], references: [id])
   createdById Int
 
-  departments     Department[]
-  crewAssignments CrewAssignment[]
+  departments          Department[]
+  crewAssignments      CrewAssignment[]
+  equipmentAssignments EquipmentAssignment[]
 
   createdAt TimestamptzString @default(now())
   updatedAt temporal.updatedAtString()
@@ -159,7 +189,8 @@ model Department {
   event   Event @relation(fields: [eventId], references: [id])
   eventId Int
 
-  crewAssignments CrewAssignment[]
+  crewAssignments      CrewAssignment[]
+  equipmentAssignments EquipmentAssignment[]
 
   createdAt TimestamptzString @default(now())
   updatedAt temporal.updatedAtString()
@@ -202,6 +233,81 @@ model CrewAssignment {
 
   crewMember   CrewMember @relation(fields: [crewMemberId], references: [id])
   crewMemberId Int
+
+  event   Event @relation(fields: [eventId], references: [id])
+  eventId Int
+
+  department   Department? @relation(fields: [departmentId], references: [id])
+  departmentId Int?
+
+  createdAt TimestamptzString @default(now())
+  updatedAt temporal.updatedAtString()
+}
+
+model EquipmentCategory {
+  id   Int    @id @default(autoincrement())
+  name String
+  code String @unique
+
+  description String?
+
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  organizationId Int
+
+  equipment Equipment[]
+
+  createdAt TimestamptzString @default(now())
+  updatedAt temporal.updatedAtString()
+}
+
+model Equipment {
+  id Int @id @default(autoincrement())
+
+  name         String
+  description  String?
+  model        String?
+  manufacturer String?
+
+  serialNumber String?
+  assetNumber  String?
+
+  quantity Int @default(1)
+
+  status    EquipmentStatus    @default(AVAILABLE)
+  condition EquipmentCondition @default(GOOD)
+  ownership EquipmentOwnership @default(OWNED)
+
+  purchaseDate TimestamptzString?
+  purchaseCost Decimal?
+
+  notes String?
+
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  organizationId Int
+
+  category   EquipmentCategory @relation(fields: [categoryId], references: [id])
+  categoryId Int
+
+  assignments EquipmentAssignment[]
+
+  createdAt TimestamptzString @default(now())
+  updatedAt temporal.updatedAtString()
+}
+
+model EquipmentAssignment {
+  id Int @id @default(autoincrement())
+
+  quantity Int @default(1)
+
+  status AssignmentStatus @default(PLANNED)
+
+  allocatedAt TimestamptzString?
+  returnedAt  TimestamptzString?
+
+  notes String?
+
+  equipment   Equipment @relation(fields: [equipmentId], references: [id])
+  equipmentId Int
 
   event   Event @relation(fields: [eventId], references: [id])
   eventId Int
