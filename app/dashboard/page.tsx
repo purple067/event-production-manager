@@ -1,31 +1,60 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { getCurrentContext } from "../../src/lib/session";
+import { db } from "../../src/prisma/db";
 
-const events = [
-  {
-    name: "NCE Yatra 6.0",
-    date: "Oct 15, 2026",
-    status: "Active",
-  },
-  {
-    name: "Kathmandu Concert",
-    date: "Oct 21, 2026",
-    status: "Planning",
-  },
-  {
-    name: "Corporate Summit",
-    date: "Nov 02, 2026",
-    status: "Draft",
-  },
-];
+function formatDate(date: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(new Date(date));
+}
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const context = await getCurrentContext();
+
+  if (!context) {
+    return null;
+  }
+
+  const organizationId = context.organization.id;
+
+  const events = await db.orm.public.Event
+    .where({
+      organizationId,
+    })
+    .all();
+
+  const now = new Date();
+
+  const activeStatuses = [
+    "PLANNING",
+    "PRE_PRODUCTION",
+    "READY",
+    "LIVE",
+  ];
+
+  const activeEvents = events.filter((event) =>
+    activeStatuses.includes(event.status),
+  );
+
+  const upcomingEvents = events
+    .filter((event) => new Date(event.startDate) >= now)
+    .sort(
+      (a, b) =>
+        new Date(a.startDate).getTime() -
+        new Date(b.startDate).getTime(),
+    )
+    .slice(0, 5);
+
   return (
     <div className="space-y-8 p-8">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">
-          Event Production Manager
+          {context.organization.name}
         </h1>
+
         <p className="mt-1 text-muted-foreground">
           Production overview and event operations.
         </p>
@@ -38,8 +67,11 @@ export default function DashboardPage() {
               Total Events
             </CardTitle>
           </CardHeader>
+
           <CardContent>
-            <div className="text-3xl font-bold">12</div>
+            <div className="text-3xl font-bold">
+              {events.length}
+            </div>
           </CardContent>
         </Card>
 
@@ -49,30 +81,39 @@ export default function DashboardPage() {
               Active Events
             </CardTitle>
           </CardHeader>
+
           <CardContent>
-            <div className="text-3xl font-bold">4</div>
+            <div className="text-3xl font-bold">
+              {activeEvents.length}
+            </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
             <CardTitle className="text-sm font-medium">
-              Open Tasks
+              Upcoming Events
             </CardTitle>
           </CardHeader>
+
           <CardContent>
-            <div className="text-3xl font-bold">27</div>
+            <div className="text-3xl font-bold">
+              {upcomingEvents.length}
+            </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
             <CardTitle className="text-sm font-medium">
-              Active Budget
+              Organization
             </CardTitle>
           </CardHeader>
+
           <CardContent>
-            <div className="text-3xl font-bold">NPR 2.4M</div>
+            <div className="truncate text-lg font-semibold">
+              {context.organization.name}
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -83,21 +124,32 @@ export default function DashboardPage() {
         </CardHeader>
 
         <CardContent className="space-y-4">
-          {events.map((event) => (
-            <div
-              key={event.name}
-              className="flex items-center justify-between rounded-lg border p-4"
-            >
-              <div>
-                <p className="font-medium">{event.name}</p>
-                <p className="text-sm text-muted-foreground">
-                  {event.date}
-                </p>
-              </div>
+          {upcomingEvents.length === 0 ? (
+            <div className="rounded-lg border border-dashed p-8 text-center">
+              <p className="font-medium">No upcoming events</p>
 
-              <Badge>{event.status}</Badge>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Create your first event to get started.
+              </p>
             </div>
-          ))}
+          ) : (
+            upcomingEvents.map((event) => (
+              <div
+                key={event.id}
+                className="flex items-center justify-between rounded-lg border p-4"
+              >
+                <div>
+                  <p className="font-medium">{event.name}</p>
+
+                  <p className="text-sm text-muted-foreground">
+                    {formatDate(event.startDate)}
+                  </p>
+                </div>
+
+                <Badge>{event.status}</Badge>
+              </div>
+            ))
+          )}
         </CardContent>
       </Card>
     </div>

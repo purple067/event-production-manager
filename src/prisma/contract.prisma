@@ -91,6 +91,21 @@ enum EquipmentOwnership {
   VENDOR_PROVIDED
 }
 
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  BLOCKED
+  DONE
+  CANCELLED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
 model Organization {
   id        Int      @id @default(autoincrement())
   name      String
@@ -106,10 +121,12 @@ model Organization {
   crewMembers         CrewMember[]
   equipmentCategories EquipmentCategory[]
   equipment            Equipment[]
+  vendors               Vendor[]
 }
 
 model User {
   id        Int      @id @default(autoincrement())
+  authUserId String? @unique 
   email     String   @unique
   username  String?  @unique
   name      String?
@@ -156,6 +173,28 @@ model Client {
   updatedAt temporal.updatedAtString()
 }
 
+model Vendor {
+  id Int @id @default(autoincrement())
+
+  name          String
+  contactPerson String?
+  email         String?
+  phone         String?
+  address       String?
+  city          String?
+  serviceType   String?
+  notes         String?
+  isActive      Boolean @default(true)
+
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  organizationId Int
+
+  eventAssignments EventVendorAssignment[]
+
+  createdAt TimestamptzString @default(now())
+  updatedAt temporal.updatedAtString()
+}
+
 model Venue {
   id       Int     @id @default(autoincrement())
   name     String
@@ -197,6 +236,9 @@ model Event {
   departments          Department[]
   crewAssignments      CrewAssignment[]
   equipmentAssignments EquipmentAssignment[]
+  vendorAssignments   EventVendorAssignment[]
+  productionTasks     ProductionTask[]
+  budget               Budget?
 
   createdAt TimestamptzString @default(now())
   updatedAt temporal.updatedAtString()
@@ -213,6 +255,8 @@ model Department {
 
   crewAssignments      CrewAssignment[]
   equipmentAssignments EquipmentAssignment[]
+  vendorAssignments     EventVendorAssignment[]
+  productionTasks      ProductionTask[]
 
   createdAt TimestamptzString @default(now())
   updatedAt temporal.updatedAtString()
@@ -234,6 +278,7 @@ model CrewMember {
   organizationId Int
 
   assignments CrewAssignment[]
+  productionTasks ProductionTask[]
 
   createdAt TimestamptzString @default(now())
   updatedAt temporal.updatedAtString()
@@ -336,6 +381,91 @@ model EquipmentAssignment {
 
   department   Department? @relation(fields: [departmentId], references: [id])
   departmentId Int?
+
+  createdAt TimestamptzString @default(now())
+  updatedAt temporal.updatedAtString()
+}
+
+model EventVendorAssignment {
+  id Int @id @default(autoincrement())
+
+  serviceName String
+  description String?
+
+  status String @default("PLANNED")
+
+  agreedCost Decimal?
+  quotedCost Decimal?
+  currency String @default("NPR")
+
+  startDate TimestamptzString?
+  endDate   TimestamptzString?
+
+  notes String?
+
+  vendor   Vendor @relation(fields: [vendorId], references: [id])
+  vendorId Int
+
+  event   Event @relation(fields: [eventId], references: [id])
+  eventId Int
+
+  department   Department? @relation(fields: [departmentId], references: [id])
+  departmentId Int?
+
+  createdAt TimestamptzString @default(now())
+  updatedAt temporal.updatedAtString()
+}
+
+
+model ProductionTask {
+  id          Int          @id @default(autoincrement())
+  title       String
+  description String?
+  status      TaskStatus   @default(TODO)
+  priority    TaskPriority @default(MEDIUM)
+  dueDate     TimestamptzString?
+  notes       String?
+
+  event        Event       @relation(fields: [eventId], references: [id])
+  eventId      Int
+
+  department   Department? @relation(fields: [departmentId], references: [id])
+  departmentId Int?
+
+  crewMember   CrewMember? @relation(fields: [crewMemberId], references: [id])
+  crewMemberId Int?
+
+  createdAt    TimestamptzString @default(now())
+  updatedAt    temporal.updatedAtString()
+}
+
+model Budget {
+  id Int @id @default(autoincrement())
+
+  event   Event @relation(fields: [eventId], references: [id])
+  eventId Int @unique
+
+  totalBudget Decimal
+  currency    String @default("NPR")
+  notes       String?
+
+  items BudgetItem[]
+
+  createdAt TimestamptzString @default(now())
+  updatedAt temporal.updatedAtString()
+}
+
+model BudgetItem {
+  id Int @id @default(autoincrement())
+
+  budget   Budget @relation(fields: [budgetId], references: [id])
+  budgetId Int
+
+  category     String
+  description  String?
+  estimatedCost Decimal
+  actualCost    Decimal @default("0")
+  notes        String?
 
   createdAt TimestamptzString @default(now())
   updatedAt temporal.updatedAtString()

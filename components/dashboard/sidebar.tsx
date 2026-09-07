@@ -4,6 +4,7 @@ import {
   ClipboardList,
   Users,
   Package,
+  Store,
   Truck,
   Wallet,
   FileText,
@@ -11,6 +12,9 @@ import {
   Settings,
   LayoutDashboard,
 } from "lucide-react";
+
+import { OrganizationSwitcher } from "./organization-switcher";
+import { getCurrentContext } from "../../src/lib/session";
 
 const navigation = [
   {
@@ -39,6 +43,11 @@ const navigation = [
     icon: Users,
   },
   {
+    name: "Vendors",
+    href: "/dashboard/vendors",
+    icon: Store,
+  },
+  {
     name: "Logistics",
     href: "/dashboard/logistics",
     icon: Truck,
@@ -60,7 +69,20 @@ const navigation = [
   },
 ];
 
-export function Sidebar() {
+export async function Sidebar() {
+  const context = await getCurrentContext();
+
+  if (!context) {
+    return null;
+  }
+
+  const organizations = context.organizations
+    .filter((item) => item.organization !== null)
+    .map((item) => ({
+      id: item.organization!.id,
+      name: item.organization!.name,
+    }));
+
   return (
     <aside className="flex h-screen w-64 flex-col border-r bg-background">
       <div className="flex h-16 items-center border-b px-6">
@@ -72,7 +94,15 @@ export function Sidebar() {
         </div>
       </div>
 
-      <nav className="flex-1 space-y-1 p-4">
+      <OrganizationSwitcher
+        currentOrganization={{
+          id: context.organization.id,
+          name: context.organization.name,
+        }}
+        organizations={organizations}
+      />
+
+      <nav className="flex-1 space-y-1 overflow-y-auto p-4">
         {navigation.map((item) => {
           const Icon = item.icon;
 

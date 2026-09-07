@@ -4,6 +4,14 @@
   "target": "postgres",
   "profileHash": "3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2",
   "roots": {
+    "budget": {
+      "model": "Budget",
+      "namespace": "public"
+    },
+    "budgetItem": {
+      "model": "BudgetItem",
+      "namespace": "public"
+    },
     "client": {
       "model": "Client",
       "namespace": "public"
@@ -36,6 +44,10 @@
       "model": "Event",
       "namespace": "public"
     },
+    "eventVendorAssignment": {
+      "model": "EventVendorAssignment",
+      "namespace": "public"
+    },
     "organization": {
       "model": "Organization",
       "namespace": "public"
@@ -44,8 +56,16 @@
       "model": "OrganizationMembership",
       "namespace": "public"
     },
+    "productionTask": {
+      "model": "ProductionTask",
+      "namespace": "public"
+    },
     "user": {
       "model": "User",
+      "namespace": "public"
+    },
+    "vendor": {
+      "model": "Vendor",
       "namespace": "public"
     },
     "venue": {
@@ -318,6 +338,52 @@
               }
             ]
           },
+          "TaskPriority": {
+            "codecId": "pg/text@1",
+            "members": [
+              {
+                "name": "LOW",
+                "value": "LOW"
+              },
+              {
+                "name": "MEDIUM",
+                "value": "MEDIUM"
+              },
+              {
+                "name": "HIGH",
+                "value": "HIGH"
+              },
+              {
+                "name": "CRITICAL",
+                "value": "CRITICAL"
+              }
+            ]
+          },
+          "TaskStatus": {
+            "codecId": "pg/text@1",
+            "members": [
+              {
+                "name": "TODO",
+                "value": "TODO"
+              },
+              {
+                "name": "IN_PROGRESS",
+                "value": "IN_PROGRESS"
+              },
+              {
+                "name": "BLOCKED",
+                "value": "BLOCKED"
+              },
+              {
+                "name": "DONE",
+                "value": "DONE"
+              },
+              {
+                "name": "CANCELLED",
+                "value": "CANCELLED"
+              }
+            ]
+          },
           "UserRole": {
             "codecId": "pg/text@1",
             "members": [
@@ -353,6 +419,235 @@
           }
         },
         "models": {
+          "Budget": {
+            "fields": {
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "currency": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "eventId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "notes": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "totalBudget": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/numeric@1",
+                  "kind": "scalar"
+                }
+              },
+              "updatedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "event": {
+                "cardinality": "N:1",
+                "on": {
+                  "localFields": [
+                    "eventId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Event",
+                  "namespace": "public"
+                }
+              },
+              "items": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "budgetId"
+                  ]
+                },
+                "to": {
+                  "model": "BudgetItem",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "currency": {
+                  "column": "currency"
+                },
+                "eventId": {
+                  "column": "eventId"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "notes": {
+                  "column": "notes"
+                },
+                "totalBudget": {
+                  "column": "totalBudget"
+                },
+                "updatedAt": {
+                  "column": "updatedAt"
+                }
+              },
+              "namespaceId": "public",
+              "table": "budget"
+            }
+          },
+          "BudgetItem": {
+            "fields": {
+              "actualCost": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/numeric@1",
+                  "kind": "scalar"
+                }
+              },
+              "budgetId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "category": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "description": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "estimatedCost": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/numeric@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "notes": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "updatedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "budget": {
+                "cardinality": "N:1",
+                "on": {
+                  "localFields": [
+                    "budgetId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Budget",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "actualCost": {
+                  "column": "actualCost"
+                },
+                "budgetId": {
+                  "column": "budgetId"
+                },
+                "category": {
+                  "column": "category"
+                },
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "description": {
+                  "column": "description"
+                },
+                "estimatedCost": {
+                  "column": "estimatedCost"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "notes": {
+                  "column": "notes"
+                },
+                "updatedAt": {
+                  "column": "updatedAt"
+                }
+              },
+              "namespaceId": "public",
+              "table": "budgetItem"
+            }
+          },
           "Client": {
             "fields": {
               "company": {
@@ -807,6 +1102,21 @@
                   "model": "Organization",
                   "namespace": "public"
                 }
+              },
+              "productionTasks": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "crewMemberId"
+                  ]
+                },
+                "to": {
+                  "model": "ProductionTask",
+                  "namespace": "public"
+                }
               }
             },
             "storage": {
@@ -953,6 +1263,36 @@
                 },
                 "to": {
                   "model": "Event",
+                  "namespace": "public"
+                }
+              },
+              "productionTasks": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "departmentId"
+                  ]
+                },
+                "to": {
+                  "model": "ProductionTask",
+                  "namespace": "public"
+                }
+              },
+              "vendorAssignments": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "departmentId"
+                  ]
+                },
+                "to": {
+                  "model": "EventVendorAssignment",
                   "namespace": "public"
                 }
               }
@@ -1619,6 +1959,21 @@
               }
             },
             "relations": {
+              "budget": {
+                "cardinality": "1:1",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "eventId"
+                  ]
+                },
+                "to": {
+                  "model": "Budget",
+                  "namespace": "public"
+                }
+              },
               "client": {
                 "cardinality": "N:1",
                 "on": {
@@ -1709,6 +2064,36 @@
                   "namespace": "public"
                 }
               },
+              "productionTasks": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "eventId"
+                  ]
+                },
+                "to": {
+                  "model": "ProductionTask",
+                  "namespace": "public"
+                }
+              },
+              "vendorAssignments": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "eventId"
+                  ]
+                },
+                "to": {
+                  "model": "EventVendorAssignment",
+                  "namespace": "public"
+                }
+              },
               "venue": {
                 "cardinality": "N:1",
                 "on": {
@@ -1766,6 +2151,213 @@
               },
               "namespaceId": "public",
               "table": "event"
+            }
+          },
+          "EventVendorAssignment": {
+            "fields": {
+              "agreedCost": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/numeric@1",
+                  "kind": "scalar"
+                }
+              },
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "currency": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "departmentId": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "description": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "endDate": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "eventId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "notes": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "quotedCost": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/numeric@1",
+                  "kind": "scalar"
+                }
+              },
+              "serviceName": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "startDate": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "status": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "updatedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "vendorId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "department": {
+                "cardinality": "N:1",
+                "on": {
+                  "localFields": [
+                    "departmentId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Department",
+                  "namespace": "public"
+                }
+              },
+              "event": {
+                "cardinality": "N:1",
+                "on": {
+                  "localFields": [
+                    "eventId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Event",
+                  "namespace": "public"
+                }
+              },
+              "vendor": {
+                "cardinality": "N:1",
+                "on": {
+                  "localFields": [
+                    "vendorId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Vendor",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "agreedCost": {
+                  "column": "agreedCost"
+                },
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "currency": {
+                  "column": "currency"
+                },
+                "departmentId": {
+                  "column": "departmentId"
+                },
+                "description": {
+                  "column": "description"
+                },
+                "endDate": {
+                  "column": "endDate"
+                },
+                "eventId": {
+                  "column": "eventId"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "notes": {
+                  "column": "notes"
+                },
+                "quotedCost": {
+                  "column": "quotedCost"
+                },
+                "serviceName": {
+                  "column": "serviceName"
+                },
+                "startDate": {
+                  "column": "startDate"
+                },
+                "status": {
+                  "column": "status"
+                },
+                "updatedAt": {
+                  "column": "updatedAt"
+                },
+                "vendorId": {
+                  "column": "vendorId"
+                }
+              },
+              "namespaceId": "public",
+              "table": "eventVendorAssignment"
             }
           },
           "Organization": {
@@ -1922,6 +2514,21 @@
                 },
                 "to": {
                   "model": "User",
+                  "namespace": "public"
+                }
+              },
+              "vendors": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "organizationId"
+                  ]
+                },
+                "to": {
+                  "model": "Vendor",
                   "namespace": "public"
                 }
               },
@@ -2087,8 +2694,204 @@
               "table": "organizationMembership"
             }
           },
+          "ProductionTask": {
+            "fields": {
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "crewMemberId": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "departmentId": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "description": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "dueDate": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "eventId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "notes": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "priority": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                },
+                "valueSet": {
+                  "entityKind": "enum",
+                  "entityName": "TaskPriority",
+                  "namespaceId": "public",
+                  "plane": "domain"
+                }
+              },
+              "status": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                },
+                "valueSet": {
+                  "entityKind": "enum",
+                  "entityName": "TaskStatus",
+                  "namespaceId": "public",
+                  "plane": "domain"
+                }
+              },
+              "title": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "updatedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "crewMember": {
+                "cardinality": "N:1",
+                "on": {
+                  "localFields": [
+                    "crewMemberId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "CrewMember",
+                  "namespace": "public"
+                }
+              },
+              "department": {
+                "cardinality": "N:1",
+                "on": {
+                  "localFields": [
+                    "departmentId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Department",
+                  "namespace": "public"
+                }
+              },
+              "event": {
+                "cardinality": "N:1",
+                "on": {
+                  "localFields": [
+                    "eventId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Event",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "crewMemberId": {
+                  "column": "crewMemberId"
+                },
+                "departmentId": {
+                  "column": "departmentId"
+                },
+                "description": {
+                  "column": "description"
+                },
+                "dueDate": {
+                  "column": "dueDate"
+                },
+                "eventId": {
+                  "column": "eventId"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "notes": {
+                  "column": "notes"
+                },
+                "priority": {
+                  "column": "priority"
+                },
+                "status": {
+                  "column": "status"
+                },
+                "title": {
+                  "column": "title"
+                },
+                "updatedAt": {
+                  "column": "updatedAt"
+                }
+              },
+              "namespaceId": "public",
+              "table": "productionTask"
+            }
+          },
           "User": {
             "fields": {
+              "authUserId": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
               "createdAt": {
                 "nullable": false,
                 "type": {
@@ -2166,6 +2969,9 @@
             },
             "storage": {
               "fields": {
+                "authUserId": {
+                  "column": "authUserId"
+                },
                 "createdAt": {
                   "column": "createdAt"
                 },
@@ -2187,6 +2993,178 @@
               },
               "namespaceId": "public",
               "table": "user"
+            }
+          },
+          "Vendor": {
+            "fields": {
+              "address": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "city": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "contactPerson": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "email": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "isActive": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/bool@1",
+                  "kind": "scalar"
+                }
+              },
+              "name": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "notes": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "organizationId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "phone": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "serviceType": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "updatedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "eventAssignments": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "vendorId"
+                  ]
+                },
+                "to": {
+                  "model": "EventVendorAssignment",
+                  "namespace": "public"
+                }
+              },
+              "organization": {
+                "cardinality": "N:1",
+                "on": {
+                  "localFields": [
+                    "organizationId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Organization",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "address": {
+                  "column": "address"
+                },
+                "city": {
+                  "column": "city"
+                },
+                "contactPerson": {
+                  "column": "contactPerson"
+                },
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "email": {
+                  "column": "email"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "isActive": {
+                  "column": "isActive"
+                },
+                "name": {
+                  "column": "name"
+                },
+                "notes": {
+                  "column": "notes"
+                },
+                "organizationId": {
+                  "column": "organizationId"
+                },
+                "phone": {
+                  "column": "phone"
+                },
+                "serviceType": {
+                  "column": "serviceType"
+                },
+                "updatedAt": {
+                  "column": "updatedAt"
+                }
+              },
+              "namespaceId": "public",
+              "table": "vendor"
             }
           },
           "Venue": {
@@ -2330,6 +3308,183 @@
       "public": {
         "entries": {
           "table": {
+            "budget": {
+              "columns": {
+                "createdAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "currency": {
+                  "codecId": "pg/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": "NPR"
+                  },
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "eventId": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "expression": "autoincrement()",
+                    "kind": "function"
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "notes": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "totalBudget": {
+                  "codecId": "pg/numeric@1",
+                  "nativeType": "numeric",
+                  "nullable": false
+                },
+                "updatedAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [
+                {
+                  "source": {
+                    "columns": [
+                      "eventId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "budget"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "event"
+                  }
+                }
+              ],
+              "indexes": [],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": [
+                {
+                  "columns": [
+                    "eventId"
+                  ]
+                }
+              ]
+            },
+            "budgetItem": {
+              "columns": {
+                "actualCost": {
+                  "codecId": "pg/numeric@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": "0"
+                  },
+                  "nativeType": "numeric",
+                  "nullable": false
+                },
+                "budgetId": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "category": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "createdAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "description": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "estimatedCost": {
+                  "codecId": "pg/numeric@1",
+                  "nativeType": "numeric",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "expression": "autoincrement()",
+                    "kind": "function"
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "notes": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "updatedAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [
+                {
+                  "source": {
+                    "columns": [
+                      "budgetId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "budgetItem"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "budget"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "budgetId"
+                  ],
+                  "name": "budgetItem_budgetId_idx_abbf614c",
+                  "prefix": "budgetItem_budgetId_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": []
+            },
             "client": {
               "columns": {
                 "company": {
@@ -3492,6 +4647,183 @@
               },
               "uniques": []
             },
+            "eventVendorAssignment": {
+              "columns": {
+                "agreedCost": {
+                  "codecId": "pg/numeric@1",
+                  "nativeType": "numeric",
+                  "nullable": true
+                },
+                "createdAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "currency": {
+                  "codecId": "pg/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": "NPR"
+                  },
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "departmentId": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": true
+                },
+                "description": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "endDate": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
+                },
+                "eventId": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "expression": "autoincrement()",
+                    "kind": "function"
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "notes": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "quotedCost": {
+                  "codecId": "pg/numeric@1",
+                  "nativeType": "numeric",
+                  "nullable": true
+                },
+                "serviceName": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "startDate": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
+                },
+                "status": {
+                  "codecId": "pg/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": "PLANNED"
+                  },
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "updatedAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "vendorId": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [
+                {
+                  "source": {
+                    "columns": [
+                      "vendorId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "eventVendorAssignment"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "vendor"
+                  }
+                },
+                {
+                  "source": {
+                    "columns": [
+                      "eventId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "eventVendorAssignment"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "event"
+                  }
+                },
+                {
+                  "source": {
+                    "columns": [
+                      "departmentId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "eventVendorAssignment"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "department"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "departmentId"
+                  ],
+                  "name": "eventVendorAssignment_departmentId_idx_8e261ed8",
+                  "prefix": "eventVendorAssignment_departmentId_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "eventId"
+                  ],
+                  "name": "eventVendorAssignment_eventId_idx_6a266d47",
+                  "prefix": "eventVendorAssignment_eventId_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "vendorId"
+                  ],
+                  "name": "eventVendorAssignment_vendorId_idx_95bbe6fd",
+                  "prefix": "eventVendorAssignment_vendorId_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": []
+            },
             "organization": {
               "columns": {
                 "createdAt": {
@@ -3677,8 +5009,199 @@
               },
               "uniques": []
             },
+            "productionTask": {
+              "checks": [
+                {
+                  "expression": "\"priority\" IN ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL')",
+                  "name": "productionTask_priority_check_0838e5f0",
+                  "prefix": "productionTask_priority_check"
+                },
+                {
+                  "expression": "\"status\" IN ('TODO', 'IN_PROGRESS', 'BLOCKED', 'DONE', 'CANCELLED')",
+                  "name": "productionTask_status_check_a2eef1dc",
+                  "prefix": "productionTask_status_check"
+                }
+              ],
+              "columns": {
+                "createdAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "crewMemberId": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": true
+                },
+                "departmentId": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": true
+                },
+                "description": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "dueDate": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
+                },
+                "eventId": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "expression": "autoincrement()",
+                    "kind": "function"
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "notes": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "priority": {
+                  "codecId": "pg/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": "MEDIUM"
+                  },
+                  "nativeType": "text",
+                  "nullable": false,
+                  "valueSet": {
+                    "entityKind": "valueSet",
+                    "entityName": "TaskPriority",
+                    "namespaceId": "public",
+                    "plane": "storage"
+                  }
+                },
+                "status": {
+                  "codecId": "pg/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": "TODO"
+                  },
+                  "nativeType": "text",
+                  "nullable": false,
+                  "valueSet": {
+                    "entityKind": "valueSet",
+                    "entityName": "TaskStatus",
+                    "namespaceId": "public",
+                    "plane": "storage"
+                  }
+                },
+                "title": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "updatedAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [
+                {
+                  "source": {
+                    "columns": [
+                      "eventId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "productionTask"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "event"
+                  }
+                },
+                {
+                  "source": {
+                    "columns": [
+                      "departmentId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "productionTask"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "department"
+                  }
+                },
+                {
+                  "source": {
+                    "columns": [
+                      "crewMemberId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "productionTask"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "crewMember"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "crewMemberId"
+                  ],
+                  "name": "productionTask_crewMemberId_idx_307a1f62",
+                  "prefix": "productionTask_crewMemberId_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "departmentId"
+                  ],
+                  "name": "productionTask_departmentId_idx_8e261ed8",
+                  "prefix": "productionTask_departmentId_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "eventId"
+                  ],
+                  "name": "productionTask_eventId_idx_6a266d47",
+                  "prefix": "productionTask_eventId_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": []
+            },
             "user": {
               "columns": {
+                "authUserId": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
                 "createdAt": {
                   "codecId": "pg/timestamptz-string@1",
                   "default": {
@@ -3728,6 +5251,11 @@
               "uniques": [
                 {
                   "columns": [
+                    "authUserId"
+                  ]
+                },
+                {
+                  "columns": [
                     "email"
                   ]
                 },
@@ -3737,6 +5265,121 @@
                   ]
                 }
               ]
+            },
+            "vendor": {
+              "columns": {
+                "address": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "city": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "contactPerson": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "createdAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "email": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "id": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "expression": "autoincrement()",
+                    "kind": "function"
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "isActive": {
+                  "codecId": "pg/bool@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": true
+                  },
+                  "nativeType": "bool",
+                  "nullable": false
+                },
+                "name": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "notes": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "organizationId": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "phone": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "serviceType": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "updatedAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [
+                {
+                  "source": {
+                    "columns": [
+                      "organizationId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "vendor"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "organization"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "organizationId"
+                  ],
+                  "name": "vendor_organizationId_idx_2e17ef41",
+                  "prefix": "vendor_organizationId_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": []
             },
             "venue": {
               "columns": {
@@ -3930,6 +5573,25 @@
                 "REMOVED"
               ]
             },
+            "TaskPriority": {
+              "kind": "valueSet",
+              "values": [
+                "LOW",
+                "MEDIUM",
+                "HIGH",
+                "CRITICAL"
+              ]
+            },
+            "TaskStatus": {
+              "kind": "valueSet",
+              "values": [
+                "TODO",
+                "IN_PROGRESS",
+                "BLOCKED",
+                "DONE",
+                "CANCELLED"
+              ]
+            },
             "UserRole": {
               "kind": "valueSet",
               "values": [
@@ -3948,12 +5610,42 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "497afbcd6b824547c7ee0616240d32fd991e810e281243cda96efa002a707ee0"
+    "storageHash": "357207e02d92d94c47af65ff4d9d4c25cb47a14c935ee37108a444ad21fa1f41"
   },
   "execution": {
-    "executionHash": "a3c29bfb3765ff2ab61ef44bb2f0be8eb8b48a0c697890da18abd6b88aa1d5ce",
+    "executionHash": "165a35bda306bb97d398ad6278d299a4003df7dd7ceaa5b548482c61ba413998",
     "mutations": {
       "defaults": [
+        {
+          "onCreate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "onUpdate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "ref": {
+            "column": "updatedAt",
+            "namespace": "public",
+            "table": "budget"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "onUpdate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "ref": {
+            "column": "updatedAt",
+            "namespace": "public",
+            "table": "budgetItem"
+          }
+        },
         {
           "onCreate": {
             "id": "timestampNow",
@@ -4086,6 +5778,21 @@
           "ref": {
             "column": "updatedAt",
             "namespace": "public",
+            "table": "eventVendorAssignment"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "onUpdate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "ref": {
+            "column": "updatedAt",
+            "namespace": "public",
             "table": "organization"
           }
         },
@@ -4116,7 +5823,37 @@
           "ref": {
             "column": "updatedAt",
             "namespace": "public",
+            "table": "productionTask"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "onUpdate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "ref": {
+            "column": "updatedAt",
+            "namespace": "public",
             "table": "user"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "onUpdate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "ref": {
+            "column": "updatedAt",
+            "namespace": "public",
+            "table": "vendor"
           }
         },
         {
