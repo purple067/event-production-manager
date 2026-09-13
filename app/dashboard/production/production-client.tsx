@@ -114,21 +114,67 @@ export default function ProductionClient({
   departments,
   crewMembers,
 }: ProductionClientProps) {
-  const activeEvents = events.filter(
-    (event) =>
-      !["COMPLETED", "ARCHIVED", "CANCELLED"].includes(event.status),
+  const activeEvents = events.filter((event) =>
+    ["PLANNING", "PRE_PRODUCTION", "READY", "LIVE"].includes(
+      event.status,
+    ),
   );
 
-  const openTasks = tasks.filter(
-    (task) => !["DONE", "CANCELLED"].includes(task.status),
-  );
+  const openTasks = tasks
+    .filter(
+      (task) => !["DONE", "CANCELLED"].includes(task.status),
+    )
+    .sort((a, b) => {
+      const statusRank: Record<string, number> = {
+        BLOCKED: 0,
+        IN_PROGRESS: 1,
+        TODO: 2,
+      };
+
+      const priorityRank: Record<string, number> = {
+        CRITICAL: 0,
+        HIGH: 1,
+        MEDIUM: 2,
+        LOW: 3,
+      };
+
+      const aStatus = statusRank[a.status] ?? 99;
+      const bStatus = statusRank[b.status] ?? 99;
+
+      if (aStatus !== bStatus) {
+        return aStatus - bStatus;
+      }
+
+      const aPriority = priorityRank[a.priority] ?? 99;
+      const bPriority = priorityRank[b.priority] ?? 99;
+
+      if (aPriority !== bPriority) {
+        return aPriority - bPriority;
+      }
+
+      const aDue = a.dueDate
+        ? new Date(a.dueDate).getTime()
+        : Number.POSITIVE_INFINITY;
+
+      const bDue = b.dueDate
+        ? new Date(b.dueDate).getTime()
+        : Number.POSITIVE_INFINITY;
+
+      return aDue - bDue;
+    });
 
   const criticalTasks = openTasks.filter(
     (task) => task.priority === "CRITICAL",
   );
 
+  const now = Date.now();
+
   const upcomingMilestones = milestones
-    .filter((milestone) => !["COMPLETED", "CANCELLED", "SKIPPED"].includes(milestone.status))
+    .filter(
+      (milestone) =>
+        !["COMPLETED", "CANCELLED", "SKIPPED"].includes(milestone.status) &&
+        new Date(milestone.startTime).getTime() >= now,
+    )
     .sort(
       (a, b) =>
         new Date(a.startTime).getTime() -
@@ -143,6 +189,65 @@ export default function ProductionClient({
   const crewMap = new Map(
     crewMembers.map((crewMember) => [crewMember.id, crewMember]),
   );
+
+  const overdueTasks = openTasks
+    .filter(
+      (task) =>
+        task.dueDate &&
+        new Date(task.dueDate).getTime() < now,
+    )
+    .sort(
+      (a, b) =>
+        new Date(a.dueDate!).getTime() -
+        new Date(b.dueDate!).getTime(),
+    );
+
+  const blockedTasks = openTasks.filter(
+    (task) => task.status === "BLOCKED",
+  );
+
+  const liveEvents = events.filter(
+    (event) => event.status === "LIVE",
+  );
+
+  const overdueMilestones = milestones
+    .filter(
+      (milestone) =>
+        milestone.status === "PLANNED" &&
+        new Date(milestone.startTime).getTime() < now,
+    )
+    .sort(
+      (a, b) =>
+        new Date(a.startTime).getTime() -
+        new Date(b.startTime).getTime(),
+    );
+
+  const productionAlerts = [
+    ...overdueTasks.map((task) => ({
+      type: "OVERDUE_TASK",
+      title: task.title,
+      description: "Production task is past its due time.",
+      eventId: task.eventId,
+    })),
+    ...blockedTasks.map((task) => ({
+      type: "BLOCKED_TASK",
+      title: task.title,
+      description: "Production task is blocked.",
+      eventId: task.eventId,
+    })),
+    ...overdueMilestones.map((milestone) => ({
+      type: "OVERDUE_MILESTONE",
+      title: milestone.title,
+      description: "Planned milestone has passed its start time.",
+      eventId: milestone.eventId,
+    })),
+    ...liveEvents.map((event) => ({
+      type: "LIVE_EVENT",
+      title: event.name,
+      description: "Event is currently live.",
+      eventId: event.id,
+    })),
+  ];
 
   return (
     <div className="space-y-6">
@@ -204,6 +309,56 @@ export default function ProductionClient({
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Production Alerts</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {productionAlerts.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No active production alerts.
+            </p>
+          ) : (
+            <div className="space-y-4">
+              {productionAlerts.slice(0, 12).map((alert, index) => {
+                const event = eventMap.get(alert.eventId);
+
+                const alertLabel: Record<string, string> = {
+                  OVERDUE_TASK: "Overdue task",
+                  BLOCKED_TASK: "Blocked task",
+                  OVERDUE_MILESTONE: "Overdue milestone",
+                  LIVE_EVENT: "Live event",
+                };
+
+                return (
+                  <div key={`${alert.type}-${alert.eventId}-${alert.title}`}>
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0">
+                        <p className="font-medium">{alert.title}</p>
+                        <p className="mt-1 text-sm text-muted-foreground">
+                          {alert.description}
+                        </p>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {event?.name ?? "Unknown event"}
+                        </p>
+                      </div>
+
+                      <Badge variant="destructive">
+                        {alertLabel[alert.type] ?? alert.type}
+                      </Badge>
+                    </div>
+
+                    {index < Math.min(productionAlerts.length, 12) - 1 && (
+                      <Separator className="mt-4" />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
