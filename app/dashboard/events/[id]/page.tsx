@@ -276,12 +276,15 @@ export default async function EventDetailsPage({
 
         <CardContent>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="rounded-lg border p-4">
+            <Link
+              href={`/dashboard/events/${event.id}/planning`}
+              className="block rounded-lg border p-4 transition-colors hover:bg-muted/50"
+            >
               <p className="font-medium">Production</p>
               <p className="mt-1 text-sm text-muted-foreground">
                 Production planning and tasks
               </p>
-            </div>
+            </Link>
 
             <div className="rounded-lg border p-4">
               <p className="font-medium">Crew</p>
