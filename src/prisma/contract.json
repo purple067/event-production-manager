@@ -48,6 +48,10 @@
       "model": "EventVendorAssignment",
       "namespace": "public"
     },
+    "milestone": {
+      "model": "Milestone",
+      "namespace": "public"
+    },
     "organization": {
       "model": "Organization",
       "namespace": "public"
@@ -335,6 +339,68 @@
               {
                 "name": "REMOVED",
                 "value": "REMOVED"
+              }
+            ]
+          },
+          "MilestoneStatus": {
+            "codecId": "pg/text@1",
+            "members": [
+              {
+                "name": "PLANNED",
+                "value": "PLANNED"
+              },
+              {
+                "name": "IN_PROGRESS",
+                "value": "IN_PROGRESS"
+              },
+              {
+                "name": "COMPLETED",
+                "value": "COMPLETED"
+              },
+              {
+                "name": "SKIPPED",
+                "value": "SKIPPED"
+              },
+              {
+                "name": "CANCELLED",
+                "value": "CANCELLED"
+              }
+            ]
+          },
+          "MilestoneType": {
+            "codecId": "pg/text@1",
+            "members": [
+              {
+                "name": "LOAD_IN",
+                "value": "LOAD_IN"
+              },
+              {
+                "name": "SETUP",
+                "value": "SETUP"
+              },
+              {
+                "name": "SOUNDCHECK",
+                "value": "SOUNDCHECK"
+              },
+              {
+                "name": "REHEARSAL",
+                "value": "REHEARSAL"
+              },
+              {
+                "name": "SHOW_START",
+                "value": "SHOW_START"
+              },
+              {
+                "name": "SHOW_END",
+                "value": "SHOW_END"
+              },
+              {
+                "name": "LOAD_OUT",
+                "value": "LOAD_OUT"
+              },
+              {
+                "name": "OTHER",
+                "value": "OTHER"
               }
             ]
           },
@@ -1088,6 +1154,21 @@
                   "namespace": "public"
                 }
               },
+              "milestones": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "crewMemberId"
+                  ]
+                },
+                "to": {
+                  "model": "Milestone",
+                  "namespace": "public"
+                }
+              },
               "organization": {
                 "cardinality": "N:1",
                 "on": {
@@ -1263,6 +1344,21 @@
                 },
                 "to": {
                   "model": "Event",
+                  "namespace": "public"
+                }
+              },
+              "milestones": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "departmentId"
+                  ]
+                },
+                "to": {
+                  "model": "Milestone",
                   "namespace": "public"
                 }
               },
@@ -2049,6 +2145,21 @@
                   "namespace": "public"
                 }
               },
+              "milestones": {
+                "cardinality": "1:N",
+                "on": {
+                  "localFields": [
+                    "id"
+                  ],
+                  "targetFields": [
+                    "eventId"
+                  ]
+                },
+                "to": {
+                  "model": "Milestone",
+                  "namespace": "public"
+                }
+              },
               "organization": {
                 "cardinality": "N:1",
                 "on": {
@@ -2358,6 +2469,195 @@
               },
               "namespaceId": "public",
               "table": "eventVendorAssignment"
+            }
+          },
+          "Milestone": {
+            "fields": {
+              "createdAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "crewMemberId": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "departmentId": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "endTime": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "eventId": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "id": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/int4@1",
+                  "kind": "scalar"
+                }
+              },
+              "notes": {
+                "nullable": true,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "startTime": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              },
+              "status": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                },
+                "valueSet": {
+                  "entityKind": "enum",
+                  "entityName": "MilestoneStatus",
+                  "namespaceId": "public",
+                  "plane": "domain"
+                }
+              },
+              "title": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                }
+              },
+              "type": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/text@1",
+                  "kind": "scalar"
+                },
+                "valueSet": {
+                  "entityKind": "enum",
+                  "entityName": "MilestoneType",
+                  "namespaceId": "public",
+                  "plane": "domain"
+                }
+              },
+              "updatedAt": {
+                "nullable": false,
+                "type": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "kind": "scalar"
+                }
+              }
+            },
+            "relations": {
+              "crewMember": {
+                "cardinality": "N:1",
+                "on": {
+                  "localFields": [
+                    "crewMemberId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "CrewMember",
+                  "namespace": "public"
+                }
+              },
+              "department": {
+                "cardinality": "N:1",
+                "on": {
+                  "localFields": [
+                    "departmentId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Department",
+                  "namespace": "public"
+                }
+              },
+              "event": {
+                "cardinality": "N:1",
+                "on": {
+                  "localFields": [
+                    "eventId"
+                  ],
+                  "targetFields": [
+                    "id"
+                  ]
+                },
+                "to": {
+                  "model": "Event",
+                  "namespace": "public"
+                }
+              }
+            },
+            "storage": {
+              "fields": {
+                "createdAt": {
+                  "column": "createdAt"
+                },
+                "crewMemberId": {
+                  "column": "crewMemberId"
+                },
+                "departmentId": {
+                  "column": "departmentId"
+                },
+                "endTime": {
+                  "column": "endTime"
+                },
+                "eventId": {
+                  "column": "eventId"
+                },
+                "id": {
+                  "column": "id"
+                },
+                "notes": {
+                  "column": "notes"
+                },
+                "startTime": {
+                  "column": "startTime"
+                },
+                "status": {
+                  "column": "status"
+                },
+                "title": {
+                  "column": "title"
+                },
+                "type": {
+                  "column": "type"
+                },
+                "updatedAt": {
+                  "column": "updatedAt"
+                }
+              },
+              "namespaceId": "public",
+              "table": "milestone"
             }
           },
           "Organization": {
@@ -4824,6 +5124,188 @@
               },
               "uniques": []
             },
+            "milestone": {
+              "checks": [
+                {
+                  "expression": "\"status\" IN ('PLANNED', 'IN_PROGRESS', 'COMPLETED', 'SKIPPED', 'CANCELLED')",
+                  "name": "milestone_status_check_3e310172",
+                  "prefix": "milestone_status_check"
+                },
+                {
+                  "expression": "\"type\" IN ('LOAD_IN', 'SETUP', 'SOUNDCHECK', 'REHEARSAL', 'SHOW_START', 'SHOW_END', 'LOAD_OUT', 'OTHER')",
+                  "name": "milestone_type_check_4e78db03",
+                  "prefix": "milestone_type_check"
+                }
+              ],
+              "columns": {
+                "createdAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "default": {
+                    "expression": "now()",
+                    "kind": "function"
+                  },
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "crewMemberId": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": true
+                },
+                "departmentId": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": true
+                },
+                "endTime": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": true
+                },
+                "eventId": {
+                  "codecId": "pg/int4@1",
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "id": {
+                  "codecId": "pg/int4@1",
+                  "default": {
+                    "expression": "autoincrement()",
+                    "kind": "function"
+                  },
+                  "nativeType": "int4",
+                  "nullable": false
+                },
+                "notes": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": true
+                },
+                "startTime": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                },
+                "status": {
+                  "codecId": "pg/text@1",
+                  "default": {
+                    "kind": "literal",
+                    "value": "PLANNED"
+                  },
+                  "nativeType": "text",
+                  "nullable": false,
+                  "valueSet": {
+                    "entityKind": "valueSet",
+                    "entityName": "MilestoneStatus",
+                    "namespaceId": "public",
+                    "plane": "storage"
+                  }
+                },
+                "title": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false
+                },
+                "type": {
+                  "codecId": "pg/text@1",
+                  "nativeType": "text",
+                  "nullable": false,
+                  "valueSet": {
+                    "entityKind": "valueSet",
+                    "entityName": "MilestoneType",
+                    "namespaceId": "public",
+                    "plane": "storage"
+                  }
+                },
+                "updatedAt": {
+                  "codecId": "pg/timestamptz-string@1",
+                  "nativeType": "timestamptz",
+                  "nullable": false
+                }
+              },
+              "foreignKeys": [
+                {
+                  "source": {
+                    "columns": [
+                      "eventId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "milestone"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "event"
+                  }
+                },
+                {
+                  "source": {
+                    "columns": [
+                      "departmentId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "milestone"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "department"
+                  }
+                },
+                {
+                  "source": {
+                    "columns": [
+                      "crewMemberId"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "milestone"
+                  },
+                  "target": {
+                    "columns": [
+                      "id"
+                    ],
+                    "namespaceId": "public",
+                    "tableName": "crewMember"
+                  }
+                }
+              ],
+              "indexes": [
+                {
+                  "columns": [
+                    "crewMemberId"
+                  ],
+                  "name": "milestone_crewMemberId_idx_307a1f62",
+                  "prefix": "milestone_crewMemberId_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "departmentId"
+                  ],
+                  "name": "milestone_departmentId_idx_8e261ed8",
+                  "prefix": "milestone_departmentId_idx",
+                  "unique": false
+                },
+                {
+                  "columns": [
+                    "eventId"
+                  ],
+                  "name": "milestone_eventId_idx_6a266d47",
+                  "prefix": "milestone_eventId_idx",
+                  "unique": false
+                }
+              ],
+              "primaryKey": {
+                "columns": [
+                  "id"
+                ]
+              },
+              "uniques": []
+            },
             "organization": {
               "columns": {
                 "createdAt": {
@@ -5573,6 +6055,29 @@
                 "REMOVED"
               ]
             },
+            "MilestoneStatus": {
+              "kind": "valueSet",
+              "values": [
+                "PLANNED",
+                "IN_PROGRESS",
+                "COMPLETED",
+                "SKIPPED",
+                "CANCELLED"
+              ]
+            },
+            "MilestoneType": {
+              "kind": "valueSet",
+              "values": [
+                "LOAD_IN",
+                "SETUP",
+                "SOUNDCHECK",
+                "REHEARSAL",
+                "SHOW_START",
+                "SHOW_END",
+                "LOAD_OUT",
+                "OTHER"
+              ]
+            },
             "TaskPriority": {
               "kind": "valueSet",
               "values": [
@@ -5610,10 +6115,10 @@
         "kind": "postgres-schema"
       }
     },
-    "storageHash": "357207e02d92d94c47af65ff4d9d4c25cb47a14c935ee37108a444ad21fa1f41"
+    "storageHash": "bb9d2c5f8a4fff954fe78709c0d0329a6c65187340a023b7f9c1868c07e9fbe7"
   },
   "execution": {
-    "executionHash": "165a35bda306bb97d398ad6278d299a4003df7dd7ceaa5b548482c61ba413998",
+    "executionHash": "6511b218e7a27993c5d070155196975dee2e81ecbb1dff1c660e04c399d86b10",
     "mutations": {
       "defaults": [
         {
@@ -5779,6 +6284,21 @@
             "column": "updatedAt",
             "namespace": "public",
             "table": "eventVendorAssignment"
+          }
+        },
+        {
+          "onCreate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "onUpdate": {
+            "id": "timestampNow",
+            "kind": "generator"
+          },
+          "ref": {
+            "column": "updatedAt",
+            "namespace": "public",
+            "table": "milestone"
           }
         },
         {

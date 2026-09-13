@@ -238,6 +238,7 @@ model Event {
   equipmentAssignments EquipmentAssignment[]
   vendorAssignments   EventVendorAssignment[]
   productionTasks     ProductionTask[]
+  milestones           Milestone[]
   budget               Budget?
 
   createdAt TimestamptzString @default(now())
@@ -257,6 +258,7 @@ model Department {
   equipmentAssignments EquipmentAssignment[]
   vendorAssignments     EventVendorAssignment[]
   productionTasks      ProductionTask[]
+  milestones            Milestone[]
 
   createdAt TimestamptzString @default(now())
   updatedAt temporal.updatedAtString()
@@ -279,6 +281,7 @@ model CrewMember {
 
   assignments CrewAssignment[]
   productionTasks ProductionTask[]
+  milestones Milestone[]
 
   createdAt TimestamptzString @default(now())
   updatedAt temporal.updatedAtString()
@@ -417,6 +420,25 @@ model EventVendorAssignment {
 }
 
 
+enum MilestoneType {
+  LOAD_IN
+  SETUP
+  SOUNDCHECK
+  REHEARSAL
+  SHOW_START
+  SHOW_END
+  LOAD_OUT
+  OTHER
+}
+
+enum MilestoneStatus {
+  PLANNED
+  IN_PROGRESS
+  COMPLETED
+  SKIPPED
+  CANCELLED
+}
+
 model ProductionTask {
   id          Int          @id @default(autoincrement())
   title       String
@@ -433,6 +455,28 @@ model ProductionTask {
   departmentId Int?
 
   crewMember   CrewMember? @relation(fields: [crewMemberId], references: [id])
+  crewMemberId Int?
+
+  createdAt    TimestamptzString @default(now())
+  updatedAt    temporal.updatedAtString()
+}
+
+model Milestone {
+  id          Int             @id @default(autoincrement())
+  title       String
+  type        MilestoneType
+  status      MilestoneStatus @default(PLANNED)
+  startTime   TimestamptzString
+  endTime     TimestamptzString?
+  notes       String?
+
+  event       Event           @relation(fields: [eventId], references: [id])
+  eventId     Int
+
+  department   Department?    @relation(fields: [departmentId], references: [id])
+  departmentId Int?
+
+  crewMember   CrewMember?    @relation(fields: [crewMemberId], references: [id])
   crewMemberId Int?
 
   createdAt    TimestamptzString @default(now())

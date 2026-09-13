@@ -33,9 +33,9 @@ import type {
 } from '@prisma/orm-postgres/contract/types';
 
 export type StorageHash =
-  StorageHashBase<'357207e02d92d94c47af65ff4d9d4c25cb47a14c935ee37108a444ad21fa1f41'>;
+  StorageHashBase<'bb9d2c5f8a4fff954fe78709c0d0329a6c65187340a023b7f9c1868c07e9fbe7'>;
 export type ExecutionHash =
-  ExecutionHashBase<'165a35bda306bb97d398ad6278d299a4003df7dd7ceaa5b548482c61ba413998'>;
+  ExecutionHashBase<'6511b218e7a27993c5d070155196975dee2e81ecbb1dff1c660e04c399d86b10'>;
 export type ProfileHash =
   ProfileHashBase<'3916f444a8a17ad749191acf9e08dad97d1a327b88c2f1d45d12f240296aa8b2'>;
 
@@ -406,6 +406,28 @@ export type FieldOutputTypes = {
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
     };
+    readonly Milestone: {
+      readonly id: CodecTypes['pg/int4@1']['output'];
+      readonly title: CodecTypes['pg/text@1']['output'];
+      readonly type:
+        | 'LOAD_IN'
+        | 'SETUP'
+        | 'SOUNDCHECK'
+        | 'REHEARSAL'
+        | 'SHOW_START'
+        | 'SHOW_END'
+        | 'LOAD_OUT'
+        | 'OTHER';
+      readonly status: 'PLANNED' | 'IN_PROGRESS' | 'COMPLETED' | 'SKIPPED' | 'CANCELLED';
+      readonly startTime: CodecTypes['pg/timestamptz-string@1']['output'];
+      readonly endTime: CodecTypes['pg/timestamptz-string@1']['output'] | null;
+      readonly notes: CodecTypes['pg/text@1']['output'] | null;
+      readonly eventId: CodecTypes['pg/int4@1']['output'];
+      readonly departmentId: CodecTypes['pg/int4@1']['output'] | null;
+      readonly crewMemberId: CodecTypes['pg/int4@1']['output'] | null;
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
+      readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
+    };
     readonly Organization: {
       readonly id: CodecTypes['pg/int4@1']['output'];
       readonly name: CodecTypes['pg/text@1']['output'];
@@ -644,6 +666,28 @@ export type FieldInputTypes = {
       readonly vendorId: CodecTypes['pg/int4@1']['input'];
       readonly eventId: CodecTypes['pg/int4@1']['input'];
       readonly departmentId: CodecTypes['pg/int4@1']['input'] | null;
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
+      readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
+    };
+    readonly Milestone: {
+      readonly id: CodecTypes['pg/int4@1']['input'];
+      readonly title: CodecTypes['pg/text@1']['input'];
+      readonly type:
+        | 'LOAD_IN'
+        | 'SETUP'
+        | 'SOUNDCHECK'
+        | 'REHEARSAL'
+        | 'SHOW_START'
+        | 'SHOW_END'
+        | 'LOAD_OUT'
+        | 'OTHER';
+      readonly status: 'PLANNED' | 'IN_PROGRESS' | 'COMPLETED' | 'SKIPPED' | 'CANCELLED';
+      readonly startTime: CodecTypes['pg/timestamptz-string@1']['input'];
+      readonly endTime: CodecTypes['pg/timestamptz-string@1']['input'] | null;
+      readonly notes: CodecTypes['pg/text@1']['input'] | null;
+      readonly eventId: CodecTypes['pg/int4@1']['input'];
+      readonly departmentId: CodecTypes['pg/int4@1']['input'] | null;
+      readonly crewMemberId: CodecTypes['pg/int4@1']['input'] | null;
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
     };
@@ -888,6 +932,28 @@ export type StorageColumnTypes = {
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly vendorId: CodecTypes['pg/int4@1']['output'];
     };
+    readonly milestone: {
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
+      readonly crewMemberId: CodecTypes['pg/int4@1']['output'] | null;
+      readonly departmentId: CodecTypes['pg/int4@1']['output'] | null;
+      readonly endTime: CodecTypes['pg/timestamptz-string@1']['output'] | null;
+      readonly eventId: CodecTypes['pg/int4@1']['output'];
+      readonly id: CodecTypes['pg/int4@1']['output'];
+      readonly notes: CodecTypes['pg/text@1']['output'] | null;
+      readonly startTime: CodecTypes['pg/timestamptz-string@1']['output'];
+      readonly status: 'PLANNED' | 'IN_PROGRESS' | 'COMPLETED' | 'SKIPPED' | 'CANCELLED';
+      readonly title: CodecTypes['pg/text@1']['output'];
+      readonly type:
+        | 'LOAD_IN'
+        | 'SETUP'
+        | 'SOUNDCHECK'
+        | 'REHEARSAL'
+        | 'SHOW_START'
+        | 'SHOW_END'
+        | 'LOAD_OUT'
+        | 'OTHER';
+      readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['output'];
+    };
     readonly organization: {
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['output'];
       readonly id: CodecTypes['pg/int4@1']['output'];
@@ -1128,6 +1194,28 @@ export type StorageColumnInputTypes = {
       readonly status: CodecTypes['pg/text@1']['input'];
       readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
       readonly vendorId: CodecTypes['pg/int4@1']['input'];
+    };
+    readonly milestone: {
+      readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
+      readonly crewMemberId: CodecTypes['pg/int4@1']['input'] | null;
+      readonly departmentId: CodecTypes['pg/int4@1']['input'] | null;
+      readonly endTime: CodecTypes['pg/timestamptz-string@1']['input'] | null;
+      readonly eventId: CodecTypes['pg/int4@1']['input'];
+      readonly id: CodecTypes['pg/int4@1']['input'];
+      readonly notes: CodecTypes['pg/text@1']['input'] | null;
+      readonly startTime: CodecTypes['pg/timestamptz-string@1']['input'];
+      readonly status: 'PLANNED' | 'IN_PROGRESS' | 'COMPLETED' | 'SKIPPED' | 'CANCELLED';
+      readonly title: CodecTypes['pg/text@1']['input'];
+      readonly type:
+        | 'LOAD_IN'
+        | 'SETUP'
+        | 'SOUNDCHECK'
+        | 'REHEARSAL'
+        | 'SHOW_START'
+        | 'SHOW_END'
+        | 'LOAD_OUT'
+        | 'OTHER';
+      readonly updatedAt: CodecTypes['pg/timestamptz-string@1']['input'];
     };
     readonly organization: {
       readonly createdAt: CodecTypes['pg/timestamptz-string@1']['input'];
@@ -2413,6 +2501,139 @@ type ContractBase = Omit<
                 },
               ];
             };
+            readonly milestone: {
+              columns: {
+                readonly id: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'function';
+                    readonly expression: 'autoincrement()';
+                  };
+                };
+                readonly title: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly type: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                };
+                readonly status: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: false;
+                  readonly default: {
+                    readonly kind: 'literal';
+                    readonly value: DefaultLiteralValue<'pg/text@1', 'PLANNED'>;
+                  };
+                };
+                readonly startTime: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly nullable: false;
+                };
+                readonly endTime: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly nullable: true;
+                };
+                readonly notes: {
+                  readonly nativeType: 'text';
+                  readonly codecId: 'pg/text@1';
+                  readonly nullable: true;
+                };
+                readonly eventId: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: false;
+                };
+                readonly departmentId: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: true;
+                };
+                readonly crewMemberId: {
+                  readonly nativeType: 'int4';
+                  readonly codecId: 'pg/int4@1';
+                  readonly nullable: true;
+                };
+                readonly createdAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly nullable: false;
+                  readonly default: { readonly kind: 'function'; readonly expression: 'now()' };
+                };
+                readonly updatedAt: {
+                  readonly nativeType: 'timestamptz';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                  readonly nullable: false;
+                };
+              };
+              primaryKey: { readonly columns: readonly ['id'] };
+              uniques: readonly [];
+              indexes: readonly [
+                {
+                  readonly name: 'milestone_eventId_idx_6a266d47';
+                  readonly prefix: 'milestone_eventId_idx';
+                  readonly columns: readonly ['eventId'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'milestone_departmentId_idx_8e261ed8';
+                  readonly prefix: 'milestone_departmentId_idx';
+                  readonly columns: readonly ['departmentId'];
+                  readonly unique: false;
+                },
+                {
+                  readonly name: 'milestone_crewMemberId_idx_307a1f62';
+                  readonly prefix: 'milestone_crewMemberId_idx';
+                  readonly columns: readonly ['crewMemberId'];
+                  readonly unique: false;
+                },
+              ];
+              foreignKeys: readonly [
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'milestone';
+                    readonly columns: readonly ['eventId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'event';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'milestone';
+                    readonly columns: readonly ['departmentId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'department';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+                {
+                  readonly source: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'milestone';
+                    readonly columns: readonly ['crewMemberId'];
+                  };
+                  readonly target: {
+                    readonly namespaceId: 'public' & NamespaceId;
+                    readonly tableName: 'crewMember';
+                    readonly columns: readonly ['id'];
+                  };
+                },
+              ];
+            };
             readonly organization: {
               columns: {
                 readonly id: {
@@ -2991,6 +3212,29 @@ type ContractBase = Omit<
               readonly kind: 'valueSet';
               readonly values: readonly ['ACTIVE', 'INVITED', 'SUSPENDED', 'REMOVED'];
             };
+            readonly MilestoneStatus: {
+              readonly kind: 'valueSet';
+              readonly values: readonly [
+                'PLANNED',
+                'IN_PROGRESS',
+                'COMPLETED',
+                'SKIPPED',
+                'CANCELLED',
+              ];
+            };
+            readonly MilestoneType: {
+              readonly kind: 'valueSet';
+              readonly values: readonly [
+                'LOAD_IN',
+                'SETUP',
+                'SOUNDCHECK',
+                'REHEARSAL',
+                'SHOW_START',
+                'SHOW_END',
+                'LOAD_OUT',
+                'OTHER',
+              ];
+            };
             readonly TaskPriority: {
               readonly kind: 'valueSet';
               readonly values: readonly ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
@@ -3064,6 +3308,7 @@ type ContractBase = Omit<
       readonly namespace: 'public' & NamespaceId;
       readonly model: 'ProductionTask';
     };
+    readonly milestone: { readonly namespace: 'public' & NamespaceId; readonly model: 'Milestone' };
     readonly budget: { readonly namespace: 'public' & NamespaceId; readonly model: 'Budget' };
     readonly budgetItem: {
       readonly namespace: 'public' & NamespaceId;
@@ -3499,6 +3744,17 @@ type ContractBase = Omit<
                   readonly targetFields: readonly ['crewMemberId'];
                 };
               };
+              readonly milestones: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Milestone';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['crewMemberId'];
+                };
+              };
               readonly organization: {
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
@@ -3610,6 +3866,17 @@ type ContractBase = Omit<
                 readonly on: {
                   readonly localFields: readonly ['eventId'];
                   readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly milestones: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Milestone';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['departmentId'];
                 };
               };
               readonly productionTasks: {
@@ -4107,6 +4374,17 @@ type ContractBase = Omit<
                   readonly targetFields: readonly ['eventId'];
                 };
               };
+              readonly milestones: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Milestone';
+                };
+                readonly cardinality: '1:N';
+                readonly on: {
+                  readonly localFields: readonly ['id'];
+                  readonly targetFields: readonly ['eventId'];
+                };
+              };
               readonly organization: {
                 readonly to: {
                   readonly namespace: 'public' & NamespaceId;
@@ -4298,6 +4576,123 @@ type ContractBase = Omit<
                 readonly vendorId: { readonly column: 'vendorId' };
                 readonly eventId: { readonly column: 'eventId' };
                 readonly departmentId: { readonly column: 'departmentId' };
+                readonly createdAt: { readonly column: 'createdAt' };
+                readonly updatedAt: { readonly column: 'updatedAt' };
+              };
+            };
+          };
+          readonly Milestone: {
+            readonly fields: {
+              readonly id: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly title: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly type: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly status: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly startTime: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                };
+              };
+              readonly endTime: {
+                readonly nullable: true;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                };
+              };
+              readonly notes: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/text@1' };
+              };
+              readonly eventId: {
+                readonly nullable: false;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly departmentId: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly crewMemberId: {
+                readonly nullable: true;
+                readonly type: { readonly kind: 'scalar'; readonly codecId: 'pg/int4@1' };
+              };
+              readonly createdAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                };
+              };
+              readonly updatedAt: {
+                readonly nullable: false;
+                readonly type: {
+                  readonly kind: 'scalar';
+                  readonly codecId: 'pg/timestamptz-string@1';
+                };
+              };
+            };
+            readonly relations: {
+              readonly crewMember: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'CrewMember';
+                };
+                readonly cardinality: 'N:1';
+                readonly on: {
+                  readonly localFields: readonly ['crewMemberId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly department: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Department';
+                };
+                readonly cardinality: 'N:1';
+                readonly on: {
+                  readonly localFields: readonly ['departmentId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+              readonly event: {
+                readonly to: {
+                  readonly namespace: 'public' & NamespaceId;
+                  readonly model: 'Event';
+                };
+                readonly cardinality: 'N:1';
+                readonly on: {
+                  readonly localFields: readonly ['eventId'];
+                  readonly targetFields: readonly ['id'];
+                };
+              };
+            };
+            readonly storage: {
+              readonly table: 'milestone';
+              readonly namespaceId: 'public';
+              readonly fields: {
+                readonly id: { readonly column: 'id' };
+                readonly title: { readonly column: 'title' };
+                readonly type: { readonly column: 'type' };
+                readonly status: { readonly column: 'status' };
+                readonly startTime: { readonly column: 'startTime' };
+                readonly endTime: { readonly column: 'endTime' };
+                readonly notes: { readonly column: 'notes' };
+                readonly eventId: { readonly column: 'eventId' };
+                readonly departmentId: { readonly column: 'departmentId' };
+                readonly crewMemberId: { readonly column: 'crewMemberId' };
                 readonly createdAt: { readonly column: 'createdAt' };
                 readonly updatedAt: { readonly column: 'updatedAt' };
               };
@@ -5035,6 +5430,29 @@ type ContractBase = Omit<
               { readonly name: 'CRITICAL'; readonly value: 'CRITICAL' },
             ];
           };
+          readonly MilestoneType: {
+            readonly codecId: 'pg/text@1';
+            readonly members: readonly [
+              { readonly name: 'LOAD_IN'; readonly value: 'LOAD_IN' },
+              { readonly name: 'SETUP'; readonly value: 'SETUP' },
+              { readonly name: 'SOUNDCHECK'; readonly value: 'SOUNDCHECK' },
+              { readonly name: 'REHEARSAL'; readonly value: 'REHEARSAL' },
+              { readonly name: 'SHOW_START'; readonly value: 'SHOW_START' },
+              { readonly name: 'SHOW_END'; readonly value: 'SHOW_END' },
+              { readonly name: 'LOAD_OUT'; readonly value: 'LOAD_OUT' },
+              { readonly name: 'OTHER'; readonly value: 'OTHER' },
+            ];
+          };
+          readonly MilestoneStatus: {
+            readonly codecId: 'pg/text@1';
+            readonly members: readonly [
+              { readonly name: 'PLANNED'; readonly value: 'PLANNED' },
+              { readonly name: 'IN_PROGRESS'; readonly value: 'IN_PROGRESS' },
+              { readonly name: 'COMPLETED'; readonly value: 'COMPLETED' },
+              { readonly name: 'SKIPPED'; readonly value: 'SKIPPED' },
+              { readonly name: 'CANCELLED'; readonly value: 'CANCELLED' },
+            ];
+          };
         };
       };
     };
@@ -5156,6 +5574,15 @@ type ContractBase = Omit<
           readonly ref: {
             readonly namespace: 'public';
             readonly table: 'eventVendorAssignment';
+            readonly column: 'updatedAt';
+          };
+          readonly onCreate: { readonly kind: 'generator'; readonly id: 'timestampNow' };
+          readonly onUpdate: { readonly kind: 'generator'; readonly id: 'timestampNow' };
+        },
+        {
+          readonly ref: {
+            readonly namespace: 'public';
+            readonly table: 'milestone';
             readonly column: 'updatedAt';
           };
           readonly onCreate: { readonly kind: 'generator'; readonly id: 'timestampNow' };
