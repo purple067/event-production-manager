@@ -1,15 +1,7 @@
 import { NextResponse } from "next/server";
+
 import { getCurrentContext } from "../../../../../../src/lib/session";
 import { db } from "../../../../../../src/prisma/db";
-
-const ASSIGNMENT_STATUSES = [
-  "PLANNED",
-  "CONFIRMED",
-  "CHECKED_IN",
-  "COMPLETED",
-  "CANCELLED",
-  "NO_SHOW",
-];
 
 function parsePositiveInt(value: string) {
   const parsed = Number(value);
@@ -153,13 +145,50 @@ export async function PATCH(
   try {
     const body = await request.json();
 
+    /*
+     * Lifecycle fields are intentionally excluded from this endpoint.
+     *
+     * status       -> operation endpoint
+     * allocatedAt  -> CHECK_IN operation
+     * returnedAt   -> RETURN operation
+     *
+     * This prevents generic PATCH from bypassing lifecycle rules.
+     */
+
+    if (body.status !== undefined) {
+      return NextResponse.json(
+        {
+          error:
+            "Assignment status cannot be changed through this endpoint. Use the equipment operation endpoint.",
+        },
+        { status: 409 },
+      );
+    }
+
+    if (body.allocatedAt !== undefined) {
+      return NextResponse.json(
+        {
+          error:
+            "Allocation time cannot be changed through this endpoint. Use the equipment operation endpoint.",
+        },
+        { status: 409 },
+      );
+    }
+
+    if (body.returnedAt !== undefined) {
+      return NextResponse.json(
+        {
+          error:
+            "Return time cannot be changed through this endpoint. Use the equipment operation endpoint.",
+        },
+        { status: 409 },
+      );
+    }
+
     const data: {
       equipmentId?: number;
       departmentId?: number | null;
       quantity?: number;
-      status?: "PLANNED" | "CONFIRMED" | "CHECKED_IN" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
-      allocatedAt?: string | null;
-      returnedAt?: string | null;
       notes?: string | null;
     } = {};
 
@@ -176,44 +205,18 @@ export async function PATCH(
         );
       }
 
-      const equipment = await db.orm.public.Equipment
-        .where({
-          id: equipmentId,
-          organizationId: context.organization.id,
-        })
-        .first();
+      const equipment =
+        await db.orm.public.Equipment
+          .where({
+            id: equipmentId,
+            organizationId: context.organization.id,
+          })
+          .first();
 
       if (!equipment) {
         return NextResponse.json(
           { error: "Equipment not found." },
           { status: 404 },
-        );
-      }
-
-      const requestedQuantity =
-        body.quantity !== undefined
-          ? Number(body.quantity)
-          : assignment.quantity;
-
-      if (
-        !Number.isInteger(requestedQuantity) ||
-        requestedQuantity <= 0
-      ) {
-        return NextResponse.json(
-          {
-            error:
-              "Quantity must be a positive integer.",
-          },
-          { status: 400 },
-        );
-      }
-
-      if (requestedQuantity > equipment.quantity) {
-        return NextResponse.json(
-          {
-            error: `Quantity cannot exceed available inventory (${equipment.quantity}).`,
-          },
-          { status: 400 },
         );
       }
 
@@ -264,7 +267,10 @@ export async function PATCH(
     if (body.quantity !== undefined) {
       const quantity = Number(body.quantity);
 
-      if (!Number.isInteger(quantity) || quantity <= 0) {
+      if (
+        !Number.isInteger(quantity) ||
+        quantity <= 0
+      ) {
         return NextResponse.json(
           {
             error:
@@ -277,96 +283,212 @@ export async function PATCH(
       data.quantity = quantity;
     }
 
-    if (body.status !== undefined) {
+    if (body.notes !== undefined) {
       if (
-        typeof body.status !== "string" ||
-        !ASSIGNMENT_STATUSES.includes(body.status)
+        body.notes !== null &&
+        typeof body.notes !== "string"
       ) {
         return NextResponse.json(
-          { error: "Invalid assignment status." },
+          { error: "Notes must be a string or null." },
           { status: 400 },
         );
       }
 
-      data.status = body.status as "PLANNED" | "CONFIRMED" | "CHECKED_IN" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
+      data.notes = body.notes;
     }
 
-    if (body.allocatedAt !== undefined) {
-      if (!body.allocatedAt) {
-        data.allocatedAt = null;
-      } else {
-        const date = new Date(body.allocatedAt);
-
-        if (Number.isNaN(date.getTime())) {
-          return NextResponse.json(
-            { error: "Invalid allocation date." },
-            { status: 400 },
-          );
-        }
-
-        data.allocatedAt = date.toISOString();
-      }
-    }
-
-    if (body.returnedAt !== undefined) {
-      if (!body.returnedAt) {
-        data.returnedAt = null;
-      } else {
-        const date = new Date(body.returnedAt);
-
-        if (Number.isNaN(date.getTime())) {
-          return NextResponse.json(
-            { error: "Invalid return date." },
-            { status: 400 },
-          );
-        }
-
-        data.returnedAt = date.toISOString();
-      }
-    }
-
-    if (
-      data.allocatedAt !== undefined &&
-      data.returnedAt !== undefined &&
-      data.allocatedAt &&
-      data.returnedAt &&
-      data.returnedAt < data.allocatedAt
-    ) {
+    if (Object.keys(data).length === 0) {
       return NextResponse.json(
         {
           error:
-            "Return date cannot be earlier than allocation date.",
+            "No editable fields were provided.",
         },
         { status: 400 },
       );
     }
 
-    if (body.notes !== undefined) {
-      data.notes =
-        typeof body.notes === "string"
-          ? body.notes.trim() || null
-          : null;
+    const result = await db.transaction(async (tx) => {
+      const current =
+        await tx.orm.public.EquipmentAssignment
+          .where({
+            id: assignmentId,
+            eventId,
+          })
+          .first();
+
+      if (!current) {
+        return {
+          kind: "not_found" as const,
+        };
+      }
+
+      const targetEquipmentId =
+        data.equipmentId ?? current.equipmentId;
+
+      const targetQuantity =
+        data.quantity ?? current.quantity;
+
+      /*
+       * Equipment quantity is inventory-sensitive only while
+       * the assignment is in an active inventory state.
+       */
+      const activeStatuses = [
+        "PLANNED",
+        "CONFIRMED",
+        "CHECKED_IN",
+      ] as const;
+
+      const isActive = activeStatuses.includes(
+        current.status as (typeof activeStatuses)[number],
+      );
+
+      if (isActive) {
+        const equipmentIds = [
+          current.equipmentId,
+          targetEquipmentId,
+        ].sort((a, b) => a - b);
+
+        for (const equipmentId of [
+          ...new Set(equipmentIds),
+        ]) {
+          const lockPlan = db.raw.sql`
+            SELECT "id"
+            FROM "equipment"
+            WHERE "id" = ${equipmentId}
+            FOR UPDATE
+          `
+            .returnsRow({
+              id: "pg/int4@1",
+            })
+            .build();
+
+          for await (const _row of tx.query(lockPlan)) {
+            // Row lock acquired.
+          }
+        }
+
+        const targetEquipment =
+          await tx.orm.public.Equipment
+            .where({
+              id: targetEquipmentId,
+            })
+            .first();
+
+        if (!targetEquipment) {
+          return {
+            kind: "equipment_not_found" as const,
+          };
+        }
+
+        const allocationPlan = db.raw.sql`
+          SELECT
+            COALESCE(SUM("quantity"), 0)::int4
+              AS "activeAllocatedQuantity"
+          FROM "equipmentAssignment"
+          WHERE "equipmentId" = ${targetEquipmentId}
+            AND "status" IN (
+              'PLANNED',
+              'CONFIRMED',
+              'CHECKED_IN'
+            )
+            AND "id" <> ${assignmentId}
+        `
+          .returnsRow({
+            activeAllocatedQuantity: "pg/int4@1",
+          })
+          .build();
+
+        let activeAllocatedQuantity = 0;
+
+        for await (const row of tx.query(allocationPlan)) {
+          activeAllocatedQuantity =
+            Number(row.activeAllocatedQuantity);
+        }
+
+        if (
+          activeAllocatedQuantity + targetQuantity >
+          targetEquipment.quantity
+        ) {
+          return {
+            kind: "insufficient_inventory" as const,
+            inventory: targetEquipment.quantity,
+            allocated: activeAllocatedQuantity,
+            requested: targetQuantity,
+          };
+        }
+      }
+
+      const updated =
+        await tx.orm.public.EquipmentAssignment
+          .where((currentAssignment) =>
+            currentAssignment.id.eq(assignmentId),
+          )
+          .where((currentAssignment) =>
+            currentAssignment.eventId.eq(eventId),
+          )
+          .update(data);
+
+      if (!updated) {
+        return {
+          kind: "concurrent_update" as const,
+        };
+      }
+
+      return {
+        kind: "success" as const,
+        assignment: updated,
+      };
+    });
+
+    if (result.kind === "not_found") {
+      return NextResponse.json(
+        { error: "Equipment assignment not found." },
+        { status: 404 },
+      );
     }
 
-    const updated =
-      await db.orm.public.EquipmentAssignment
-        .where({
-          id: assignmentId,
-          eventId,
-        })
-        .update(data);
+    if (result.kind === "equipment_not_found") {
+      return NextResponse.json(
+        { error: "Equipment not found." },
+        { status: 404 },
+      );
+    }
+
+    if (result.kind === "insufficient_inventory") {
+      return NextResponse.json(
+        {
+          error:
+            `Insufficient equipment inventory. Inventory: ${result.inventory}, Already allocated: ${result.allocated}, Requested: ${result.requested}.`,
+        },
+        { status: 409 },
+      );
+    }
+
+    if (result.kind === "concurrent_update") {
+      return NextResponse.json(
+        {
+          error:
+            "Equipment assignment was changed by another operation. Please refresh and try again.",
+        },
+        { status: 409 },
+      );
+    }
 
     return NextResponse.json({
-      assignment: updated,
+      assignment: result.assignment,
     });
-  } catch {
+  } catch (error) {
+    console.error(
+      "Equipment assignment update failed:",
+      error,
+    );
+
     return NextResponse.json(
       { error: "Invalid request." },
       { status: 400 },
     );
   }
 }
-
 export async function DELETE(
   _request: Request,
   {

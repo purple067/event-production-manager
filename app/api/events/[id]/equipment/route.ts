@@ -12,12 +12,6 @@ const ASSIGNMENT_STATUSES = [
   "NO_SHOW",
 ];
 
-const RESERVING_STATUSES = [
-  "PLANNED",
-  "CONFIRMED",
-  "CHECKED_IN",
-];
-
 function getEventId(params: { id: string }) {
   const eventId = Number(params.id);
 
