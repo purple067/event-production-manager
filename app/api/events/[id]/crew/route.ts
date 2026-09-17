@@ -13,6 +13,17 @@ const allowedStatuses = [
   "NO_SHOW",
 ] as const;
 
+const creatableStatuses = [
+  "PLANNED",
+  "CONFIRMED",
+] as const;
+
+const activeStatuses = [
+  "PLANNED",
+  "CONFIRMED",
+  "CHECKED_IN",
+] as const;
+
 type AssignmentStatus = (typeof allowedStatuses)[number];
 
 type CreateAssignmentBody = {
@@ -76,6 +87,22 @@ async function getEvent(
     .first();
 }
 
+function parseDate(
+  value: string | undefined,
+): string | null | undefined {
+  if (value === undefined || value === null || value === "") {
+    return null;
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return undefined;
+  }
+
+  return date.toISOString();
+}
+
 export async function GET(
   _request: Request,
   context: {
@@ -83,7 +110,8 @@ export async function GET(
   },
 ) {
   try {
-    const organizationContext = await getOrganizationContext();
+    const organizationContext =
+      await getOrganizationContext();
 
     if (!organizationContext) {
       return NextResponse.json(
@@ -92,7 +120,9 @@ export async function GET(
       );
     }
 
-    const eventId = Number((await context.params).id);
+    const eventId = Number(
+      (await context.params).id,
+    );
 
     if (!Number.isInteger(eventId) || eventId <= 0) {
       return NextResponse.json(
@@ -118,7 +148,9 @@ export async function GET(
         .where({
           eventId,
         })
-        .orderBy((assignment) => assignment.callTime.asc())
+        .orderBy((assignment) =>
+          assignment.callTime.asc(),
+        )
         .all();
 
     return NextResponse.json({
@@ -141,7 +173,8 @@ export async function POST(
   },
 ) {
   try {
-    const organizationContext = await getOrganizationContext();
+    const organizationContext =
+      await getOrganizationContext();
 
     if (!organizationContext) {
       return NextResponse.json(
@@ -150,7 +183,9 @@ export async function POST(
       );
     }
 
-    const eventId = Number((await context.params).id);
+    const eventId = Number(
+      (await context.params).id,
+    );
 
     if (!Number.isInteger(eventId) || eventId <= 0) {
       return NextResponse.json(
@@ -159,9 +194,12 @@ export async function POST(
       );
     }
 
+    const organizationId =
+      organizationContext.membership.organizationId;
+
     const event = await getEvent(
       eventId,
-      organizationContext.membership.organizationId,
+      organizationId,
     );
 
     if (!event) {
@@ -171,7 +209,16 @@ export async function POST(
       );
     }
 
-    const body = (await request.json()) as CreateAssignmentBody;
+    let body: CreateAssignmentBody;
+
+    try {
+      body = (await request.json()) as CreateAssignmentBody;
+    } catch {
+      return NextResponse.json(
+        { error: "Invalid JSON body." },
+        { status: 400 },
+      );
+    }
 
     if (
       body.crewMemberId === undefined ||
@@ -184,12 +231,13 @@ export async function POST(
       );
     }
 
+    const crewMemberId = body.crewMemberId;
+
     const crewMember =
       await db.orm.public.CrewMember
         .where({
-          id: body.crewMemberId,
-          organizationId:
-            organizationContext.membership.organizationId,
+          id: crewMemberId,
+          organizationId,
         })
         .first();
 
@@ -251,37 +299,41 @@ export async function POST(
         ? (body.assignmentStatus as AssignmentStatus)
         : "PLANNED";
 
-    const role = body.role?.trim() || null;
-    const rateUnit = body.rateUnit?.trim() || null;
-    const notes = body.notes?.trim() || null;
-
-    let callTime: string | null = null;
-    let releaseTime: string | null = null;
-
-    if (body.callTime) {
-      const date = new Date(body.callTime);
-
-      if (Number.isNaN(date.getTime())) {
-        return NextResponse.json(
-          { error: "Invalid call time." },
-          { status: 400 },
-        );
-      }
-
-      callTime = date.toISOString();
+    if (
+      !creatableStatuses.includes(
+        assignmentStatus as (typeof creatableStatuses)[number],
+      )
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "New crew assignments must be PLANNED or CONFIRMED.",
+        },
+        { status: 400 },
+      );
     }
 
-    if (body.releaseTime) {
-      const date = new Date(body.releaseTime);
+    const callTime = parseDate(body.callTime);
+    const releaseTime = parseDate(body.releaseTime);
 
-      if (Number.isNaN(date.getTime())) {
-        return NextResponse.json(
-          { error: "Invalid release time." },
-          { status: 400 },
-        );
-      }
+    if (
+      body.callTime !== undefined &&
+      callTime === undefined
+    ) {
+      return NextResponse.json(
+        { error: "Invalid call time." },
+        { status: 400 },
+      );
+    }
 
-      releaseTime = date.toISOString();
+    if (
+      body.releaseTime !== undefined &&
+      releaseTime === undefined
+    ) {
+      return NextResponse.json(
+        { error: "Invalid release time." },
+        { status: 400 },
+      );
     }
 
     if (
@@ -298,31 +350,157 @@ export async function POST(
       );
     }
 
-    const assignment = await db.orm.public.CrewAssignment.create({
-      crewMemberId: body.crewMemberId,
-      eventId,
-      departmentId,
-      role,
-      assignmentStatus,
-      callTime,
-      releaseTime,
-      rate:
-	 body.rate !== undefined && body.rate !== null
-		? String(body.rate)
-		: null,
-      rateUnit,
-      notes,
+    const role = body.role?.trim() || null;
+    const rateUnit = body.rateUnit?.trim() || null;
+    const notes = body.notes?.trim() || null;
+
+    const result = await db.transaction(async (tx) => {
+      /*
+       * Serialize all assignments for this crew member.
+       *
+       * The lock is deliberately taken before checking for
+       * overlapping assignments. Two concurrent POST requests
+       * for the same crew member therefore cannot both pass
+       * the conflict check.
+       */
+      const crewLockPlan = db.raw.sql`
+        SELECT
+          "id"
+        FROM "crewMember"
+        WHERE "id" = ${crewMemberId}
+          AND "organizationId" = ${organizationId}
+        FOR UPDATE
+      `
+        .returnsRow({
+          id: "pg/int4@1",
+        })
+        .build();
+
+      let lockedCrewMemberId: number | undefined;
+
+      for await (const row of tx.query(crewLockPlan)) {
+        lockedCrewMemberId = row.id;
+        break;
+      }
+
+      if (lockedCrewMemberId === undefined) {
+        return {
+          kind: "crew_not_found" as const,
+        };
+      }
+
+      /*
+       * Only active assignments consume crew availability.
+       *
+       * Half-open intervals are used:
+       *
+       * existing.callTime < new.releaseTime
+       * AND
+       * existing.releaseTime > new.callTime
+       *
+       * Therefore:
+       *   10:00-18:00 + 18:00-22:00 = no conflict
+       *   10:00-18:00 + 17:00-19:00 = conflict
+       */
+      if (
+        activeStatuses.includes(
+          assignmentStatus as (typeof activeStatuses)[number],
+        ) &&
+        callTime &&
+        releaseTime
+      ) {
+        const conflictPlan = db.raw.sql`
+          SELECT
+            "id"
+          FROM "crewAssignment"
+          WHERE "crewMemberId" = ${crewMemberId}
+            AND "assignmentStatus" IN (
+              'PLANNED',
+              'CONFIRMED',
+              'CHECKED_IN'
+            )
+            AND "callTime" IS NOT NULL
+            AND "releaseTime" IS NOT NULL
+            AND "callTime" < ${releaseTime}
+            AND "releaseTime" > ${callTime}
+          ORDER BY "id"
+          LIMIT 1
+        `
+          .returnsRow({
+            id: "pg/int4@1",
+          })
+          .build();
+
+        let conflictId: number | undefined;
+
+        for await (const row of tx.query(conflictPlan)) {
+          conflictId = row.id;
+          break;
+        }
+
+        if (conflictId !== undefined) {
+          return {
+            kind: "conflict" as const,
+            conflictId,
+          };
+        }
+      }
+
+      const assignment =
+        await tx.orm.public.CrewAssignment.create({
+          crewMemberId,
+          eventId,
+          departmentId,
+          role,
+          assignmentStatus,
+          callTime,
+          releaseTime,
+          rate:
+            body.rate !== undefined &&
+            body.rate !== null
+              ? String(body.rate)
+              : null,
+          rateUnit,
+          notes,
+        });
+
+      return {
+        kind: "success" as const,
+        assignment,
+      };
     });
+
+    if (result.kind === "crew_not_found") {
+      return NextResponse.json(
+        { error: "Crew member not found." },
+        { status: 404 },
+      );
+    }
+
+    if (result.kind === "conflict") {
+      return NextResponse.json(
+        {
+          error:
+            "Crew member has an overlapping active assignment.",
+          conflictAssignmentId:
+            result.conflictId,
+        },
+        { status: 409 },
+      );
+    }
 
     return NextResponse.json(
       {
         success: true,
-        assignment,
+        assignment: result.assignment,
       },
       { status: 201 },
     );
   } catch (error) {
-    console.error("Create crew assignment failed:", error);
+    console.error(
+      "Create crew assignment failed:",
+      error,
+    );
 
     return NextResponse.json(
       { error: "Unable to create crew assignment." },

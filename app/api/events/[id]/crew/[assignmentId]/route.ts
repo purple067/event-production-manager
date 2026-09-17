@@ -13,6 +13,12 @@ const allowedStatuses = [
   "NO_SHOW",
 ] as const;
 
+const activeStatuses = [
+  "PLANNED",
+  "CONFIRMED",
+  "CHECKED_IN",
+] as const;
+
 type AssignmentStatus = (typeof allowedStatuses)[number];
 
 type UpdateAssignmentBody = {
@@ -26,6 +32,50 @@ type UpdateAssignmentBody = {
   rateUnit?: string | null;
   notes?: string | null;
 };
+
+function isActiveStatus(
+  status: AssignmentStatus,
+) {
+  return activeStatuses.includes(
+    status as (typeof activeStatuses)[number],
+  );
+}
+
+function isValidTransition(
+  current: AssignmentStatus,
+  next: AssignmentStatus,
+) {
+  if (current === next) {
+    return true;
+  }
+
+  switch (current) {
+    case "PLANNED":
+      return (
+        next === "CONFIRMED" ||
+        next === "CANCELLED" ||
+        next === "NO_SHOW"
+      );
+
+    case "CONFIRMED":
+      return (
+        next === "CHECKED_IN" ||
+        next === "CANCELLED" ||
+        next === "NO_SHOW"
+      );
+
+    case "CHECKED_IN":
+      return next === "COMPLETED";
+
+    case "COMPLETED":
+    case "CANCELLED":
+    case "NO_SHOW":
+      return false;
+
+    default:
+      return false;
+  }
+}
 
 async function getOrganizationContext() {
   const session = await auth.api.getSession({
@@ -114,7 +164,8 @@ export async function GET(
   },
 ) {
   try {
-    const organizationContext = await getOrganizationContext();
+    const organizationContext =
+      await getOrganizationContext();
 
     if (!organizationContext) {
       return NextResponse.json(
@@ -157,7 +208,10 @@ export async function GET(
       assignment,
     });
   } catch (error) {
-    console.error("Get crew assignment failed:", error);
+    console.error(
+      "Get crew assignment failed:",
+      error,
+    );
 
     return NextResponse.json(
       { error: "Unable to load crew assignment." },
@@ -176,7 +230,8 @@ export async function PATCH(
   },
 ) {
   try {
-    const organizationContext = await getOrganizationContext();
+    const organizationContext =
+      await getOrganizationContext();
 
     if (!organizationContext) {
       return NextResponse.json(
@@ -202,22 +257,34 @@ export async function PATCH(
       );
     }
 
-    const assignment = await getAssignment(
-      eventId,
-      assignmentId,
-      organizationContext.membership.organizationId,
-    );
+    const existingAssignment =
+      await getAssignment(
+        eventId,
+        assignmentId,
+        organizationContext.membership.organizationId,
+      );
 
-    if (!assignment) {
+    if (!existingAssignment) {
       return NextResponse.json(
         { error: "Crew assignment not found." },
         { status: 404 },
       );
     }
 
-    const body = (await request.json()) as UpdateAssignmentBody;
+    let body: UpdateAssignmentBody;
 
-    const updateData: Record<string, unknown> = {};
+    try {
+      body =
+        (await request.json()) as UpdateAssignmentBody;
+    } catch {
+      return NextResponse.json(
+        { error: "Invalid JSON body." },
+        { status: 400 },
+      );
+    }
+
+    let requestedCrewMemberId =
+      existingAssignment.crewMemberId;
 
     if (body.crewMemberId !== undefined) {
       if (
@@ -230,29 +297,11 @@ export async function PATCH(
         );
       }
 
-      const crewMember =
-        await db.orm.public.CrewMember
-          .where({
-            id: body.crewMemberId,
-            organizationId:
-              organizationContext.membership.organizationId,
-          })
-          .first();
-
-      if (!crewMember) {
-        return NextResponse.json(
-          { error: "Crew member not found." },
-          { status: 404 },
-        );
-      }
-
-      updateData.crewMemberId = body.crewMemberId;
+      requestedCrewMemberId = body.crewMemberId;
     }
 
     if (body.departmentId !== undefined) {
-      if (body.departmentId === null) {
-        updateData.departmentId = null;
-      } else {
+      if (body.departmentId !== null) {
         if (
           !Number.isInteger(body.departmentId) ||
           body.departmentId <= 0
@@ -280,27 +329,11 @@ export async function PATCH(
             { status: 404 },
           );
         }
-
-        updateData.departmentId = body.departmentId;
       }
     }
 
-    if (body.role !== undefined) {
-      updateData.role = body.role?.trim() || null;
-    }
-
-    if (body.rateUnit !== undefined) {
-      updateData.rateUnit =
-        body.rateUnit?.trim() || null;
-    }
-
-    if (body.notes !== undefined) {
-      updateData.notes = body.notes?.trim() || null;
-    }
-
-    if (body.rate !== undefined) {
-      updateData.rate = body.rate;
-    }
+    let requestedStatus =
+      existingAssignment.assignmentStatus as AssignmentStatus;
 
     if (body.assignmentStatus !== undefined) {
       if (
@@ -314,51 +347,55 @@ export async function PATCH(
         );
       }
 
-      updateData.assignmentStatus =
-        body.assignmentStatus;
+      requestedStatus =
+        body.assignmentStatus as AssignmentStatus;
     }
 
-    if (body.callTime !== undefined) {
-      const parsed = parseDate(body.callTime);
-
-      if (
-        body.callTime !== null &&
-        parsed === undefined
-      ) {
-        return NextResponse.json(
-          { error: "Invalid call time." },
-          { status: 400 },
-        );
-      }
-
-      updateData.callTime = parsed;
-    }
-
-    if (body.releaseTime !== undefined) {
-      const parsed = parseDate(body.releaseTime);
-
-      if (
-        body.releaseTime !== null &&
-        parsed === undefined
-      ) {
-        return NextResponse.json(
-          { error: "Invalid release time." },
-          { status: 400 },
-        );
-      }
-
-      updateData.releaseTime = parsed;
+    if (
+      !isValidTransition(
+        existingAssignment.assignmentStatus as AssignmentStatus,
+        requestedStatus,
+      )
+    ) {
+      return NextResponse.json(
+        {
+          error: `Invalid crew assignment transition from ${existingAssignment.assignmentStatus} to ${requestedStatus}.`,
+        },
+        { status: 409 },
+      );
     }
 
     const finalCallTime =
       body.callTime !== undefined
         ? parseDate(body.callTime)
-        : assignment.callTime;
+        : existingAssignment.callTime;
 
     const finalReleaseTime =
       body.releaseTime !== undefined
         ? parseDate(body.releaseTime)
-        : assignment.releaseTime;
+        : existingAssignment.releaseTime;
+
+    if (
+      body.callTime !== undefined &&
+      body.callTime !== null &&
+      finalCallTime === undefined
+    ) {
+      return NextResponse.json(
+        { error: "Invalid call time." },
+        { status: 400 },
+      );
+    }
+
+    if (
+      body.releaseTime !== undefined &&
+      body.releaseTime !== null &&
+      finalReleaseTime === undefined
+    ) {
+      return NextResponse.json(
+        { error: "Invalid release time." },
+        { status: 400 },
+      );
+    }
 
     if (
       finalCallTime &&
@@ -375,20 +412,220 @@ export async function PATCH(
       );
     }
 
-    const updatedAssignment =
-      await db.orm.public.CrewAssignment
-        .where({
-          id: assignmentId,
-          eventId,
-        })
-        .update(updateData);
+    const updateData: Record<string, unknown> = {};
+
+    if (body.crewMemberId !== undefined) {
+      updateData.crewMemberId =
+        requestedCrewMemberId;
+    }
+
+    if (body.departmentId !== undefined) {
+      updateData.departmentId =
+        body.departmentId;
+    }
+
+    if (body.role !== undefined) {
+      updateData.role =
+        body.role?.trim() || null;
+    }
+
+    if (body.rateUnit !== undefined) {
+      updateData.rateUnit =
+        body.rateUnit?.trim() || null;
+    }
+
+    if (body.notes !== undefined) {
+      updateData.notes =
+        body.notes?.trim() || null;
+    }
+
+    if (body.rate !== undefined) {
+      updateData.rate = body.rate;
+    }
+
+    if (body.assignmentStatus !== undefined) {
+      updateData.assignmentStatus =
+        requestedStatus;
+    }
+
+    if (body.callTime !== undefined) {
+      updateData.callTime = finalCallTime;
+    }
+
+    if (body.releaseTime !== undefined) {
+      updateData.releaseTime =
+        finalReleaseTime;
+    }
+
+    const result = await db.transaction(async (tx) => {
+      const crewMemberIds = [
+        existingAssignment.crewMemberId,
+        requestedCrewMemberId,
+      ].sort((a, b) => a - b);
+
+      const uniqueCrewMemberIds = [
+        ...new Set(crewMemberIds),
+      ];
+
+      for (const crewMemberId of uniqueCrewMemberIds) {
+        const lockPlan = db.raw.sql`
+          SELECT
+            "id"
+          FROM "crewMember"
+          WHERE "id" = ${crewMemberId}
+            AND "organizationId" = ${
+              organizationContext.membership.organizationId
+            }
+          FOR UPDATE
+        `
+          .returnsRow({
+            id: "pg/int4@1",
+          })
+          .build();
+
+        let lockedId: number | undefined;
+
+        for await (const row of tx.query(lockPlan)) {
+          lockedId = row.id;
+          break;
+        }
+
+        if (lockedId === undefined) {
+          return {
+            kind: "crew_not_found" as const,
+          };
+        }
+      }
+
+      const currentAssignment =
+        await tx.orm.public.CrewAssignment
+          .where({
+            id: assignmentId,
+            eventId,
+          })
+          .first();
+
+      if (!currentAssignment) {
+        return {
+          kind: "assignment_not_found" as const,
+        };
+      }
+
+      if (
+        currentAssignment.assignmentStatus !==
+          existingAssignment.assignmentStatus ||
+        currentAssignment.crewMemberId !==
+          existingAssignment.crewMemberId
+      ) {
+        return {
+          kind: "concurrent_change" as const,
+        };
+      }
+
+      if (
+        isActiveStatus(requestedStatus) &&
+        finalCallTime &&
+        finalReleaseTime
+      ) {
+        const conflictPlan = db.raw.sql`
+          SELECT
+            "id"
+          FROM "crewAssignment"
+          WHERE "crewMemberId" = ${requestedCrewMemberId}
+            AND "id" <> ${assignmentId}
+            AND "assignmentStatus" IN (
+              'PLANNED',
+              'CONFIRMED',
+              'CHECKED_IN'
+            )
+            AND "callTime" IS NOT NULL
+            AND "releaseTime" IS NOT NULL
+            AND "callTime" < ${finalReleaseTime}
+            AND "releaseTime" > ${finalCallTime}
+          ORDER BY "id"
+          LIMIT 1
+        `
+          .returnsRow({
+            id: "pg/int4@1",
+          })
+          .build();
+
+        let conflictId: number | undefined;
+
+        for await (const row of tx.query(
+          conflictPlan,
+        )) {
+          conflictId = row.id;
+          break;
+        }
+
+        if (conflictId !== undefined) {
+          return {
+            kind: "conflict" as const,
+            conflictId,
+          };
+        }
+      }
+
+      const updatedAssignment =
+        await tx.orm.public.CrewAssignment
+          .where({
+            id: assignmentId,
+            eventId,
+          })
+          .update(updateData);
+
+      return {
+        kind: "success" as const,
+        assignment: updatedAssignment,
+      };
+    });
+
+    if (result.kind === "crew_not_found") {
+      return NextResponse.json(
+        { error: "Crew member not found." },
+        { status: 404 },
+      );
+    }
+
+    if (result.kind === "assignment_not_found") {
+      return NextResponse.json(
+        { error: "Crew assignment not found." },
+        { status: 404 },
+      );
+    }
+
+    if (result.kind === "concurrent_change") {
+      return NextResponse.json(
+        {
+          error:
+            "Crew assignment was changed by another operation. Please refresh and try again.",
+        },
+        { status: 409 },
+      );
+    }
+
+    if (result.kind === "conflict") {
+      return NextResponse.json(
+        {
+          error:
+            "Crew member has an overlapping active assignment.",
+          conflictAssignmentId:
+            result.conflictId,
+        },
+        { status: 409 },
+      );
+    }
 
     return NextResponse.json({
       success: true,
-      assignment: updatedAssignment,
+      assignment: result.assignment,
     });
   } catch (error) {
-    console.error("Update crew assignment failed:", error);
+    console.error(
+      "Update crew assignment failed:",
+      error,
+    );
 
     return NextResponse.json(
       { error: "Unable to update crew assignment." },
@@ -407,7 +644,8 @@ export async function DELETE(
   },
 ) {
   try {
-    const organizationContext = await getOrganizationContext();
+    const organizationContext =
+      await getOrganizationContext();
 
     if (!organizationContext) {
       return NextResponse.json(
@@ -446,6 +684,21 @@ export async function DELETE(
       );
     }
 
+    if (
+      assignment.assignmentStatus ===
+        "CHECKED_IN" ||
+      assignment.assignmentStatus ===
+        "COMPLETED"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "Checked-in or completed crew assignments cannot be deleted.",
+        },
+        { status: 409 },
+      );
+    }
+
     await db.orm.public.CrewAssignment
       .where({
         id: assignmentId,
@@ -458,7 +711,10 @@ export async function DELETE(
       message: "Crew assignment deleted.",
     });
   } catch (error) {
-    console.error("Delete crew assignment failed:", error);
+    console.error(
+      "Delete crew assignment failed:",
+      error,
+    );
 
     return NextResponse.json(
       { error: "Unable to delete crew assignment." },
