@@ -1,23 +1,17 @@
 import { NextResponse } from "next/server";
-import { cookies, headers } from "next/headers";
 
-import { auth } from "../../../../src/lib/auth";
-import { db } from "../../../../src/prisma/db";
+import { cookies } from "next/headers";
+
+import {
+  authorizationErrorResponse,
+  requireCurrentContext,
+} from "../../../../src/lib/authorization";
 
 const CURRENT_ORGANIZATION_COOKIE = "epm_current_org";
 
 export async function POST(request: Request) {
   try {
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    });
-
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: "Unauthorized." },
-        { status: 401 },
-      );
-    }
+    const context = await requireCurrentContext();
 
     const body = (await request.json()) as {
       organizationId?: number;
@@ -32,65 +26,51 @@ export async function POST(request: Request) {
       );
     }
 
-    const user = await db.orm.public.User
-      .where({
-        authUserId: session.user.id,
-      })
-      .first();
+    /*
+     * getCurrentContext() already returns only ACTIVE memberships.
+     * Switching is therefore limited to organizations the authenticated
+     * user is already authorized to access.
+     */
+    const target = context.organizations.find(
+      (item) => item.organization?.id === organizationId,
+    );
 
-    if (!user) {
-      return NextResponse.json(
-        { error: "EPM user not found." },
-        { status: 404 },
-      );
-    }
-
-    const membership = await db.orm.public.OrganizationMembership
-      .where({
-        userId: user.id,
-        organizationId,
-        status: "ACTIVE",
-      })
-      .first();
-
-    if (!membership) {
+    if (!target?.organization) {
       return NextResponse.json(
         { error: "You do not have access to this organization." },
         { status: 403 },
       );
     }
 
-    const organization = await db.orm.public.Organization
-      .where({
-        id: organizationId,
-      })
-      .first();
-
-    if (!organization) {
-      return NextResponse.json(
-        { error: "Organization not found." },
-        { status: 404 },
-      );
-    }
-
     const cookieStore = await cookies();
 
-    cookieStore.set(CURRENT_ORGANIZATION_COOKIE, String(organizationId), {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-      path: "/",
-      maxAge: 60 * 60 * 24 * 30,
-    });
+    cookieStore.set(
+      CURRENT_ORGANIZATION_COOKIE,
+      String(organizationId),
+      {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: process.env.NODE_ENV === "production",
+        path: "/",
+        maxAge: 60 * 60 * 24 * 30,
+      },
+    );
 
     return NextResponse.json({
       success: true,
       organization: {
-        id: organization.id,
-        name: organization.name,
+        id: target.organization.id,
+        name: target.organization.name,
       },
     });
   } catch (error) {
+    const authorizationResponse =
+      authorizationErrorResponse(error);
+
+    if (authorizationResponse) {
+      return authorizationResponse;
+    }
+
     console.error("Organization switch failed:", error);
 
     return NextResponse.json(
