@@ -226,7 +226,7 @@ export async function PATCH(
     data.status = body.status;
   }
 
-  let startTime =
+  const startTime =
     body.startTime !== undefined
       ? parseDate(body.startTime)
       : new Date(milestone.startTime);

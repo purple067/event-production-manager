@@ -1,0 +1,1211 @@
+[
+  {
+    "id": "table.budget",
+    "label": "Create table \"budget\"",
+    "summary": "Creates table \"budget\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "budget"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"budget\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"budget\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"budget\"",
+        "sql": "CREATE TABLE \"public\".\"budget\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"currency\" text DEFAULT 'NPR' NOT NULL,\n  \"eventId\" int4 NOT NULL,\n  \"id\" SERIAL NOT NULL,\n  \"notes\" text,\n  \"totalBudget\" numeric NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"budget\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"budget\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.budgetItem",
+    "label": "Create table \"budgetItem\"",
+    "summary": "Creates table \"budgetItem\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "budgetItem"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"budgetItem\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"budgetItem\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"budgetItem\"",
+        "sql": "CREATE TABLE \"public\".\"budgetItem\" (\n  \"actualCost\" numeric DEFAULT '0'::numeric NOT NULL,\n  \"budgetId\" int4 NOT NULL,\n  \"category\" text NOT NULL,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"description\" text,\n  \"estimatedCost\" numeric NOT NULL,\n  \"id\" SERIAL NOT NULL,\n  \"notes\" text,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"budgetItem\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"budgetItem\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.eventVendorAssignment",
+    "label": "Create table \"eventVendorAssignment\"",
+    "summary": "Creates table \"eventVendorAssignment\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "eventVendorAssignment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"eventVendorAssignment\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"eventVendorAssignment\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"eventVendorAssignment\"",
+        "sql": "CREATE TABLE \"public\".\"eventVendorAssignment\" (\n  \"agreedCost\" numeric,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"currency\" text DEFAULT 'NPR' NOT NULL,\n  \"departmentId\" int4,\n  \"description\" text,\n  \"endDate\" timestamptz,\n  \"eventId\" int4 NOT NULL,\n  \"id\" SERIAL NOT NULL,\n  \"notes\" text,\n  \"quotedCost\" numeric,\n  \"serviceName\" text NOT NULL,\n  \"startDate\" timestamptz,\n  \"status\" text DEFAULT 'PLANNED' NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  \"vendorId\" int4 NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"eventVendorAssignment\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"eventVendorAssignment\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.milestone",
+    "label": "Create table \"milestone\"",
+    "summary": "Creates table \"milestone\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "milestone"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"milestone\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"milestone\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"milestone\"",
+        "sql": "CREATE TABLE \"public\".\"milestone\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"crewMemberId\" int4,\n  \"departmentId\" int4,\n  \"endTime\" timestamptz,\n  \"eventId\" int4 NOT NULL,\n  \"id\" SERIAL NOT NULL,\n  \"notes\" text,\n  \"startTime\" timestamptz NOT NULL,\n  \"status\" text DEFAULT 'PLANNED' NOT NULL,\n  \"title\" text NOT NULL,\n  \"type\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"milestone_status_check_3e310172\" CHECK (\"status\" IN ('PLANNED', 'IN_PROGRESS', 'COMPLETED', 'SKIPPED', 'CANCELLED')),\n  CONSTRAINT \"milestone_type_check_4e78db03\" CHECK (\"type\" IN ('LOAD_IN', 'SETUP', 'SOUNDCHECK', 'REHEARSAL', 'SHOW_START', 'SHOW_END', 'LOAD_OUT', 'OTHER'))\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"milestone\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"milestone\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.productionTask",
+    "label": "Create table \"productionTask\"",
+    "summary": "Creates table \"productionTask\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "productionTask"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"productionTask\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"productionTask\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"productionTask\"",
+        "sql": "CREATE TABLE \"public\".\"productionTask\" (\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"crewMemberId\" int4,\n  \"departmentId\" int4,\n  \"description\" text,\n  \"dueDate\" timestamptz,\n  \"eventId\" int4 NOT NULL,\n  \"id\" SERIAL NOT NULL,\n  \"notes\" text,\n  \"priority\" text DEFAULT 'MEDIUM' NOT NULL,\n  \"status\" text DEFAULT 'TODO' NOT NULL,\n  \"title\" text NOT NULL,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\"),\n  CONSTRAINT \"productionTask_priority_check_0838e5f0\" CHECK (\"priority\" IN ('LOW', 'MEDIUM', 'HIGH', 'CRITICAL')),\n  CONSTRAINT \"productionTask_status_check_a2eef1dc\" CHECK (\"status\" IN ('TODO', 'IN_PROGRESS', 'BLOCKED', 'DONE', 'CANCELLED'))\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"productionTask\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"productionTask\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "table.vendor",
+    "label": "Create table \"vendor\"",
+    "summary": "Creates table \"vendor\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "table",
+        "name": "vendor"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure table \"vendor\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"vendor\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create table \"vendor\"",
+        "sql": "CREATE TABLE \"public\".\"vendor\" (\n  \"address\" text,\n  \"city\" text,\n  \"contactPerson\" text,\n  \"createdAt\" timestamptz DEFAULT (now()) NOT NULL,\n  \"email\" text,\n  \"id\" SERIAL NOT NULL,\n  \"isActive\" bool DEFAULT true NOT NULL,\n  \"name\" text NOT NULL,\n  \"notes\" text,\n  \"organizationId\" int4 NOT NULL,\n  \"phone\" text,\n  \"serviceType\" text,\n  \"updatedAt\" timestamptz NOT NULL,\n  PRIMARY KEY (\"id\")\n)",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify table \"vendor\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"vendor\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "unique.budget.budget_eventId_key",
+    "label": "Add unique constraint on \"budget\" (eventId)",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "unique",
+        "name": "budget_eventId_key",
+        "table": "budget"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure constraint \"budget_eventId_key\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "budget_eventId_key",
+          "public",
+          "\"public\".\"budget\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add unique constraint \"budget_eventId_key\"",
+        "sql": "ALTER TABLE \"public\".\"budget\" ADD CONSTRAINT \"budget_eventId_key\" UNIQUE (\"eventId\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify constraint \"budget_eventId_key\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "budget_eventId_key",
+          "public",
+          "\"public\".\"budget\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.budgetItem.budgetItem_budgetId_idx_abbf614c",
+    "label": "Create index \"budgetItem_budgetId_idx_abbf614c\" on \"budgetItem\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "budgetItem_budgetId_idx_abbf614c",
+        "table": "budgetItem"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"budgetItem_budgetId_idx_abbf614c\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"budgetItem_budgetId_idx_abbf614c\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"budgetItem_budgetId_idx_abbf614c\"",
+        "sql": "CREATE INDEX \"budgetItem_budgetId_idx_abbf614c\" ON \"public\".\"budgetItem\" (\"budgetId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"budgetItem_budgetId_idx_abbf614c\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"budgetItem_budgetId_idx_abbf614c\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.eventVendorAssignment.eventVendorAssignment_departmentId_idx_8e261ed8",
+    "label": "Create index \"eventVendorAssignment_departmentId_idx_8e261ed8\" on \"eventVendorAssignment\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "eventVendorAssignment_departmentId_idx_8e261ed8",
+        "table": "eventVendorAssignment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"eventVendorAssignment_departmentId_idx_8e261ed8\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"eventVendorAssignment_departmentId_idx_8e261ed8\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"eventVendorAssignment_departmentId_idx_8e261ed8\"",
+        "sql": "CREATE INDEX \"eventVendorAssignment_departmentId_idx_8e261ed8\" ON \"public\".\"eventVendorAssignment\" (\"departmentId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"eventVendorAssignment_departmentId_idx_8e261ed8\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"eventVendorAssignment_departmentId_idx_8e261ed8\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.eventVendorAssignment.eventVendorAssignment_eventId_idx_6a266d47",
+    "label": "Create index \"eventVendorAssignment_eventId_idx_6a266d47\" on \"eventVendorAssignment\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "eventVendorAssignment_eventId_idx_6a266d47",
+        "table": "eventVendorAssignment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"eventVendorAssignment_eventId_idx_6a266d47\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"eventVendorAssignment_eventId_idx_6a266d47\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"eventVendorAssignment_eventId_idx_6a266d47\"",
+        "sql": "CREATE INDEX \"eventVendorAssignment_eventId_idx_6a266d47\" ON \"public\".\"eventVendorAssignment\" (\"eventId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"eventVendorAssignment_eventId_idx_6a266d47\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"eventVendorAssignment_eventId_idx_6a266d47\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.eventVendorAssignment.eventVendorAssignment_vendorId_idx_95bbe6fd",
+    "label": "Create index \"eventVendorAssignment_vendorId_idx_95bbe6fd\" on \"eventVendorAssignment\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "eventVendorAssignment_vendorId_idx_95bbe6fd",
+        "table": "eventVendorAssignment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"eventVendorAssignment_vendorId_idx_95bbe6fd\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"eventVendorAssignment_vendorId_idx_95bbe6fd\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"eventVendorAssignment_vendorId_idx_95bbe6fd\"",
+        "sql": "CREATE INDEX \"eventVendorAssignment_vendorId_idx_95bbe6fd\" ON \"public\".\"eventVendorAssignment\" (\"vendorId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"eventVendorAssignment_vendorId_idx_95bbe6fd\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"eventVendorAssignment_vendorId_idx_95bbe6fd\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.milestone.milestone_crewMemberId_idx_307a1f62",
+    "label": "Create index \"milestone_crewMemberId_idx_307a1f62\" on \"milestone\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "milestone_crewMemberId_idx_307a1f62",
+        "table": "milestone"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"milestone_crewMemberId_idx_307a1f62\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"milestone_crewMemberId_idx_307a1f62\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"milestone_crewMemberId_idx_307a1f62\"",
+        "sql": "CREATE INDEX \"milestone_crewMemberId_idx_307a1f62\" ON \"public\".\"milestone\" (\"crewMemberId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"milestone_crewMemberId_idx_307a1f62\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"milestone_crewMemberId_idx_307a1f62\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.milestone.milestone_departmentId_idx_8e261ed8",
+    "label": "Create index \"milestone_departmentId_idx_8e261ed8\" on \"milestone\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "milestone_departmentId_idx_8e261ed8",
+        "table": "milestone"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"milestone_departmentId_idx_8e261ed8\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"milestone_departmentId_idx_8e261ed8\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"milestone_departmentId_idx_8e261ed8\"",
+        "sql": "CREATE INDEX \"milestone_departmentId_idx_8e261ed8\" ON \"public\".\"milestone\" (\"departmentId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"milestone_departmentId_idx_8e261ed8\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"milestone_departmentId_idx_8e261ed8\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.milestone.milestone_eventId_idx_6a266d47",
+    "label": "Create index \"milestone_eventId_idx_6a266d47\" on \"milestone\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "milestone_eventId_idx_6a266d47",
+        "table": "milestone"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"milestone_eventId_idx_6a266d47\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"milestone_eventId_idx_6a266d47\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"milestone_eventId_idx_6a266d47\"",
+        "sql": "CREATE INDEX \"milestone_eventId_idx_6a266d47\" ON \"public\".\"milestone\" (\"eventId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"milestone_eventId_idx_6a266d47\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"milestone_eventId_idx_6a266d47\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.productionTask.productionTask_crewMemberId_idx_307a1f62",
+    "label": "Create index \"productionTask_crewMemberId_idx_307a1f62\" on \"productionTask\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "productionTask_crewMemberId_idx_307a1f62",
+        "table": "productionTask"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"productionTask_crewMemberId_idx_307a1f62\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"productionTask_crewMemberId_idx_307a1f62\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"productionTask_crewMemberId_idx_307a1f62\"",
+        "sql": "CREATE INDEX \"productionTask_crewMemberId_idx_307a1f62\" ON \"public\".\"productionTask\" (\"crewMemberId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"productionTask_crewMemberId_idx_307a1f62\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"productionTask_crewMemberId_idx_307a1f62\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.productionTask.productionTask_departmentId_idx_8e261ed8",
+    "label": "Create index \"productionTask_departmentId_idx_8e261ed8\" on \"productionTask\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "productionTask_departmentId_idx_8e261ed8",
+        "table": "productionTask"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"productionTask_departmentId_idx_8e261ed8\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"productionTask_departmentId_idx_8e261ed8\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"productionTask_departmentId_idx_8e261ed8\"",
+        "sql": "CREATE INDEX \"productionTask_departmentId_idx_8e261ed8\" ON \"public\".\"productionTask\" (\"departmentId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"productionTask_departmentId_idx_8e261ed8\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"productionTask_departmentId_idx_8e261ed8\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.productionTask.productionTask_eventId_idx_6a266d47",
+    "label": "Create index \"productionTask_eventId_idx_6a266d47\" on \"productionTask\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "productionTask_eventId_idx_6a266d47",
+        "table": "productionTask"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"productionTask_eventId_idx_6a266d47\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"productionTask_eventId_idx_6a266d47\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"productionTask_eventId_idx_6a266d47\"",
+        "sql": "CREATE INDEX \"productionTask_eventId_idx_6a266d47\" ON \"public\".\"productionTask\" (\"eventId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"productionTask_eventId_idx_6a266d47\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"productionTask_eventId_idx_6a266d47\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "index.vendor.vendor_organizationId_idx_2e17ef41",
+    "label": "Create index \"vendor_organizationId_idx_2e17ef41\" on \"vendor\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "index",
+        "name": "vendor_organizationId_idx_2e17ef41",
+        "table": "vendor"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure index \"vendor_organizationId_idx_2e17ef41\" does not exist",
+        "sql": "SELECT (to_regclass($1)) IS NULL AS \"result\"",
+        "params": [
+          "\"public\".\"vendor_organizationId_idx_2e17ef41\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "create index \"vendor_organizationId_idx_2e17ef41\"",
+        "sql": "CREATE INDEX \"vendor_organizationId_idx_2e17ef41\" ON \"public\".\"vendor\" (\"organizationId\")",
+        "params": []
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify index \"vendor_organizationId_idx_2e17ef41\" exists",
+        "sql": "SELECT (to_regclass($1)) IS NOT NULL AS \"result\"",
+        "params": [
+          "\"public\".\"vendor_organizationId_idx_2e17ef41\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.budget.budget_eventId_fkey",
+    "label": "Add foreign key \"budget_eventId_fkey\" on \"budget\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "budget_eventId_fkey",
+        "table": "budget"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"budget_eventId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "budget_eventId_fkey",
+          "public",
+          "\"public\".\"budget\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"budget_eventId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"budget\"\nADD CONSTRAINT \"budget_eventId_fkey\"\nFOREIGN KEY (\"eventId\")\nREFERENCES \"public\".\"event\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"budget_eventId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "budget_eventId_fkey",
+          "public",
+          "\"public\".\"budget\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.budgetItem.budgetItem_budgetId_fkey",
+    "label": "Add foreign key \"budgetItem_budgetId_fkey\" on \"budgetItem\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "budgetItem_budgetId_fkey",
+        "table": "budgetItem"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"budgetItem_budgetId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "budgetItem_budgetId_fkey",
+          "public",
+          "\"public\".\"budgetItem\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"budgetItem_budgetId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"budgetItem\"\nADD CONSTRAINT \"budgetItem_budgetId_fkey\"\nFOREIGN KEY (\"budgetId\")\nREFERENCES \"public\".\"budget\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"budgetItem_budgetId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "budgetItem_budgetId_fkey",
+          "public",
+          "\"public\".\"budgetItem\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.eventVendorAssignment.eventVendorAssignment_vendorId_fkey",
+    "label": "Add foreign key \"eventVendorAssignment_vendorId_fkey\" on \"eventVendorAssignment\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "eventVendorAssignment_vendorId_fkey",
+        "table": "eventVendorAssignment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"eventVendorAssignment_vendorId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "eventVendorAssignment_vendorId_fkey",
+          "public",
+          "\"public\".\"eventVendorAssignment\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"eventVendorAssignment_vendorId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"eventVendorAssignment\"\nADD CONSTRAINT \"eventVendorAssignment_vendorId_fkey\"\nFOREIGN KEY (\"vendorId\")\nREFERENCES \"public\".\"vendor\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"eventVendorAssignment_vendorId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "eventVendorAssignment_vendorId_fkey",
+          "public",
+          "\"public\".\"eventVendorAssignment\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.eventVendorAssignment.eventVendorAssignment_eventId_fkey",
+    "label": "Add foreign key \"eventVendorAssignment_eventId_fkey\" on \"eventVendorAssignment\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "eventVendorAssignment_eventId_fkey",
+        "table": "eventVendorAssignment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"eventVendorAssignment_eventId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "eventVendorAssignment_eventId_fkey",
+          "public",
+          "\"public\".\"eventVendorAssignment\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"eventVendorAssignment_eventId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"eventVendorAssignment\"\nADD CONSTRAINT \"eventVendorAssignment_eventId_fkey\"\nFOREIGN KEY (\"eventId\")\nREFERENCES \"public\".\"event\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"eventVendorAssignment_eventId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "eventVendorAssignment_eventId_fkey",
+          "public",
+          "\"public\".\"eventVendorAssignment\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.eventVendorAssignment.eventVendorAssignment_departmentId_fkey",
+    "label": "Add foreign key \"eventVendorAssignment_departmentId_fkey\" on \"eventVendorAssignment\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "eventVendorAssignment_departmentId_fkey",
+        "table": "eventVendorAssignment"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"eventVendorAssignment_departmentId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "eventVendorAssignment_departmentId_fkey",
+          "public",
+          "\"public\".\"eventVendorAssignment\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"eventVendorAssignment_departmentId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"eventVendorAssignment\"\nADD CONSTRAINT \"eventVendorAssignment_departmentId_fkey\"\nFOREIGN KEY (\"departmentId\")\nREFERENCES \"public\".\"department\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"eventVendorAssignment_departmentId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "eventVendorAssignment_departmentId_fkey",
+          "public",
+          "\"public\".\"eventVendorAssignment\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.milestone.milestone_eventId_fkey",
+    "label": "Add foreign key \"milestone_eventId_fkey\" on \"milestone\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "milestone_eventId_fkey",
+        "table": "milestone"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"milestone_eventId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "milestone_eventId_fkey",
+          "public",
+          "\"public\".\"milestone\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"milestone_eventId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"milestone\"\nADD CONSTRAINT \"milestone_eventId_fkey\"\nFOREIGN KEY (\"eventId\")\nREFERENCES \"public\".\"event\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"milestone_eventId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "milestone_eventId_fkey",
+          "public",
+          "\"public\".\"milestone\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.milestone.milestone_departmentId_fkey",
+    "label": "Add foreign key \"milestone_departmentId_fkey\" on \"milestone\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "milestone_departmentId_fkey",
+        "table": "milestone"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"milestone_departmentId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "milestone_departmentId_fkey",
+          "public",
+          "\"public\".\"milestone\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"milestone_departmentId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"milestone\"\nADD CONSTRAINT \"milestone_departmentId_fkey\"\nFOREIGN KEY (\"departmentId\")\nREFERENCES \"public\".\"department\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"milestone_departmentId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "milestone_departmentId_fkey",
+          "public",
+          "\"public\".\"milestone\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.milestone.milestone_crewMemberId_fkey",
+    "label": "Add foreign key \"milestone_crewMemberId_fkey\" on \"milestone\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "milestone_crewMemberId_fkey",
+        "table": "milestone"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"milestone_crewMemberId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "milestone_crewMemberId_fkey",
+          "public",
+          "\"public\".\"milestone\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"milestone_crewMemberId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"milestone\"\nADD CONSTRAINT \"milestone_crewMemberId_fkey\"\nFOREIGN KEY (\"crewMemberId\")\nREFERENCES \"public\".\"crewMember\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"milestone_crewMemberId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "milestone_crewMemberId_fkey",
+          "public",
+          "\"public\".\"milestone\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.productionTask.productionTask_eventId_fkey",
+    "label": "Add foreign key \"productionTask_eventId_fkey\" on \"productionTask\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "productionTask_eventId_fkey",
+        "table": "productionTask"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"productionTask_eventId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "productionTask_eventId_fkey",
+          "public",
+          "\"public\".\"productionTask\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"productionTask_eventId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"productionTask\"\nADD CONSTRAINT \"productionTask_eventId_fkey\"\nFOREIGN KEY (\"eventId\")\nREFERENCES \"public\".\"event\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"productionTask_eventId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "productionTask_eventId_fkey",
+          "public",
+          "\"public\".\"productionTask\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.productionTask.productionTask_departmentId_fkey",
+    "label": "Add foreign key \"productionTask_departmentId_fkey\" on \"productionTask\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "productionTask_departmentId_fkey",
+        "table": "productionTask"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"productionTask_departmentId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "productionTask_departmentId_fkey",
+          "public",
+          "\"public\".\"productionTask\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"productionTask_departmentId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"productionTask\"\nADD CONSTRAINT \"productionTask_departmentId_fkey\"\nFOREIGN KEY (\"departmentId\")\nREFERENCES \"public\".\"department\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"productionTask_departmentId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "productionTask_departmentId_fkey",
+          "public",
+          "\"public\".\"productionTask\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.productionTask.productionTask_crewMemberId_fkey",
+    "label": "Add foreign key \"productionTask_crewMemberId_fkey\" on \"productionTask\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "productionTask_crewMemberId_fkey",
+        "table": "productionTask"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"productionTask_crewMemberId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "productionTask_crewMemberId_fkey",
+          "public",
+          "\"public\".\"productionTask\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"productionTask_crewMemberId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"productionTask\"\nADD CONSTRAINT \"productionTask_crewMemberId_fkey\"\nFOREIGN KEY (\"crewMemberId\")\nREFERENCES \"public\".\"crewMember\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"productionTask_crewMemberId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "productionTask_crewMemberId_fkey",
+          "public",
+          "\"public\".\"productionTask\""
+        ]
+      }
+    ]
+  },
+  {
+    "id": "foreignKey.vendor.vendor_organizationId_fkey",
+    "label": "Add foreign key \"vendor_organizationId_fkey\" on \"vendor\"",
+    "operationClass": "additive",
+    "target": {
+      "id": "postgres",
+      "details": {
+        "schema": "public",
+        "objectType": "foreignKey",
+        "name": "vendor_organizationId_fkey",
+        "table": "vendor"
+      }
+    },
+    "precheck": [
+      {
+        "description": "ensure FK \"vendor_organizationId_fkey\" does not exist",
+        "sql": "SELECT NOT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "vendor_organizationId_fkey",
+          "public",
+          "\"public\".\"vendor\""
+        ]
+      }
+    ],
+    "execute": [
+      {
+        "description": "add FK \"vendor_organizationId_fkey\"",
+        "sql": "ALTER TABLE \"public\".\"vendor\"\nADD CONSTRAINT \"vendor_organizationId_fkey\"\nFOREIGN KEY (\"organizationId\")\nREFERENCES \"public\".\"organization\" (\"id\")"
+      }
+    ],
+    "postcheck": [
+      {
+        "description": "verify FK \"vendor_organizationId_fkey\" exists",
+        "sql": "SELECT EXISTS (SELECT 1 AS \"one\" FROM \"pg_constraint\" AS \"c\" INNER JOIN \"pg_namespace\" AS \"n\" ON \"n\".\"oid\" = \"c\".\"connamespace\" WHERE (\"c\".\"conname\" = $1 AND \"n\".\"nspname\" = $2 AND \"c\".\"conrelid\" = to_regclass($3))) AS \"result\"",
+        "params": [
+          "vendor_organizationId_fkey",
+          "public",
+          "\"public\".\"vendor\""
+        ]
+      }
+    ]
+  }
+]

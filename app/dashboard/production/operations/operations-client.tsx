@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -324,13 +324,10 @@ export default function OperationsClient({
     }
   }
 
-  const selectedOperation = useMemo(
-    () =>
-      activeOperations.find(
-        (operation) => operation.event.id.toString() === selectedEventId,
-      ) ?? activeOperations[0],
-    [activeOperations, selectedEventId],
-  );
+  const selectedOperation =
+    activeOperations.find(
+      (operation) => operation.event.id.toString() === selectedEventId,
+    ) ?? activeOperations[0];
 
   if (!selectedOperation) {
     return (
@@ -476,7 +473,7 @@ export default function OperationsClient({
         <Card>
           <CardHeader>
             <CardTitle className="text-sm font-medium">
-              Today's Milestones
+              Today&apos;s Milestones
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -540,7 +537,7 @@ export default function OperationsClient({
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Today's Timeline</CardTitle>
+            <CardTitle>Today&apos;s Timeline</CardTitle>
           </CardHeader>
 
           <CardContent>

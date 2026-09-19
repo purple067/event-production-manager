@@ -362,8 +362,8 @@ export async function PATCH(
             })
             .build();
 
-          for await (const _row of tx.query(lockPlan)) {
-            // Row lock acquired.
+          for await (const row of tx.query(lockPlan)) {
+            void row;
           }
         }
 

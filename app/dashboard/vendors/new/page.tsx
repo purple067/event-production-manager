@@ -2,9 +2,11 @@
 
 import { FormEvent, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 
 export default function NewVendorPage() {
+  const router = useRouter();
   const [name, setName] = useState("");
   const [contactPerson, setContactPerson] = useState("");
   const [email, setEmail] = useState("");
@@ -50,7 +52,7 @@ export default function NewVendorPage() {
         return;
       }
 
-      window.location.href = "/dashboard/vendors";
+      router.push("/dashboard/vendors");
     } catch {
       setError("Unable to connect to the server.");
     } finally {

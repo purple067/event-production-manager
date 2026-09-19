@@ -67,6 +67,19 @@ export default function EditCrewAssignmentPage() {
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
 
+
+
+function toDateTimeLocal(value: string | null) {
+    if (!value) return "";
+
+    const date = new Date(value);
+
+    const offset = date.getTimezoneOffset();
+    const localDate = new Date(date.getTime() - offset * 60 * 1000);
+
+    return localDate.toISOString().slice(0, 16);
+  }
+
   useEffect(() => {
     async function loadData() {
       try {
@@ -125,17 +138,6 @@ export default function EditCrewAssignmentPage() {
 
     loadData();
   }, [eventId, assignmentId]);
-
-  function toDateTimeLocal(value: string | null) {
-    if (!value) return "";
-
-    const date = new Date(value);
-
-    const offset = date.getTimezoneOffset();
-    const localDate = new Date(date.getTime() - offset * 60 * 1000);
-
-    return localDate.toISOString().slice(0, 16);
-  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -248,7 +250,7 @@ export default function EditCrewAssignmentPage() {
           Edit Crew Assignment
         </h1>
         <p className="text-sm text-muted-foreground">
-          Update the crew member's assignment for this event.
+          Update the crew member&apos;s assignment for this event.
         </p>
       </div>
 

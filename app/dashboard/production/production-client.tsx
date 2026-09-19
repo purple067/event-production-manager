@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -114,6 +116,18 @@ export default function ProductionClient({
   departments,
   crewMembers,
 }: ProductionClientProps) {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      setNow(Date.now());
+    }, 60_000);
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, []);
+
   const activeEvents = events.filter((event) =>
     ["PLANNING", "PRE_PRODUCTION", "READY", "LIVE"].includes(
       event.status,
@@ -167,7 +181,7 @@ export default function ProductionClient({
     (task) => task.priority === "CRITICAL",
   );
 
-  const now = Date.now();
+
 
   const upcomingMilestones = milestones
     .filter(

@@ -368,7 +368,7 @@ export default function PlanningClient({
             <div className="relative space-y-0">
               <div className="absolute bottom-4 left-[7px] top-4 w-px bg-border" />
 
-              {filteredTimeline.map((item, index) => {
+              {filteredTimeline.map((item) => {
                 const departmentName = getDepartmentName(
                   item.departmentId,
                   departments,

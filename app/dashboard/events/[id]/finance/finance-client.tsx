@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "../../../../../components/ui/button";
 import {
   Card,
@@ -64,43 +64,67 @@ export default function FinanceClient({ eventId }: { eventId: string }) {
   const [editingId, setEditingId] = useState<number | null>(null);
   const categoryInputRef = useRef<HTMLInputElement>(null);
 
-  async function loadFinance() {
-    try {
-      setLoading(true);
-      setError("");
+  const loadFinance = useCallback(async () => {
+    const [budgetResponse, itemsResponse] = await Promise.all([
+      fetch(`/api/events/${eventId}/budget`),
+      fetch(`/api/events/${eventId}/budget/items`),
+    ]);
 
-      const [budgetResponse, itemsResponse] = await Promise.all([
-        fetch(`/api/events/${eventId}/budget`),
-        fetch(`/api/events/${eventId}/budget/items`),
-      ]);
-
-      if (!budgetResponse.ok) {
-        throw new Error("Failed to load budget.");
-      }
-
-      const budgetData = await budgetResponse.json();
-      setBudget(budgetData.budget);
-
-      if (budgetData.budget) {
-        if (!itemsResponse.ok) {
-          throw new Error("Failed to load budget items.");
-        }
-
-        const itemsData = await itemsResponse.json();
-        setItems(itemsData.items ?? []);
-      } else {
-        setItems([]);
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong.");
-    } finally {
-      setLoading(false);
+    if (!budgetResponse.ok) {
+      throw new Error("Failed to load budget.");
     }
-  }
+
+    const budgetData = await budgetResponse.json();
+
+    if (!budgetData.budget) {
+      return {
+        budget: null,
+        items: [],
+      };
+    }
+
+    if (!itemsResponse.ok) {
+      throw new Error("Failed to load budget items.");
+    }
+
+    const itemsData = await itemsResponse.json();
+
+    return {
+      budget: budgetData.budget,
+      items: itemsData.items ?? [],
+    };
+  }, [eventId]);
 
   useEffect(() => {
-    loadFinance();
-  }, [eventId]);
+    let cancelled = false;
+
+    async function initializeFinance() {
+      try {
+        const data = await loadFinance();
+
+        if (cancelled) return;
+
+        setBudget(data.budget);
+        setItems(data.items);
+      } catch (err) {
+        if (cancelled) return;
+
+        setError(
+          err instanceof Error ? err.message : "Something went wrong.",
+        );
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    void initializeFinance();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [loadFinance]);
 
   const totals = useMemo(() => {
     const estimated = items.reduce(
@@ -200,7 +224,9 @@ export default function FinanceClient({ eventId }: { eventId: string }) {
       }
 
       cancelEdit();
-      await loadFinance();
+      const refreshed = await loadFinance();
+      setBudget(refreshed.budget);
+      setItems(refreshed.items);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save item.");
     } finally {
@@ -235,7 +261,9 @@ export default function FinanceClient({ eventId }: { eventId: string }) {
         cancelEdit();
       }
 
-      await loadFinance();
+      const refreshed = await loadFinance();
+      setBudget(refreshed.budget);
+      setItems(refreshed.items);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete item.");
     }

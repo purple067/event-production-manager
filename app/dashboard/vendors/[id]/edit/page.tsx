@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 
 type Vendor = {
@@ -22,6 +23,8 @@ export default function EditVendorPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const router = useRouter();
+
   const [vendorId, setVendorId] = useState("");
   const [vendor, setVendor] = useState<Vendor | null>(null);
 
@@ -109,7 +112,7 @@ export default function EditVendorPage({
         return;
       }
 
-      window.location.href = "/dashboard/vendors";
+      router.push("/dashboard/vendors");
     } catch {
       setError("Unable to connect to the server.");
     } finally {
@@ -141,7 +144,7 @@ export default function EditVendorPage({
         return;
       }
 
-      window.location.href = "/dashboard/vendors";
+      router.push("/dashboard/vendors");
     } catch {
       setError("Unable to connect to the server.");
     } finally {

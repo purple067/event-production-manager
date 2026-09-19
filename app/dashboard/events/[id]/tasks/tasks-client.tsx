@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
 import { Badge } from "../../../../../components/ui/badge";
 import { Button } from "../../../../../components/ui/button";
 import {
@@ -141,34 +141,49 @@ export default function TasksClient({
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
-  async function loadTasks() {
-    try {
-      setLoading(true);
-      setError("");
+  const loadTasks = useCallback(async () => {
+    const response = await fetch(`/api/events/${eventId}/tasks`, {
+      cache: "no-store",
+    });
 
-      const response = await fetch(`/api/events/${eventId}/tasks`, {
-        cache: "no-store",
-      });
+    const data = await response.json();
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to load tasks.");
-      }
-
-      setTasks(data.tasks ?? []);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to load tasks.",
-      );
-    } finally {
-      setLoading(false);
+    if (!response.ok) {
+      throw new Error(data.error || "Failed to load tasks.");
     }
-  }
+
+    return data.tasks ?? [];
+  }, [eventId]);
 
   useEffect(() => {
-    loadTasks();
-  }, [eventId]);
+    let cancelled = false;
+
+    async function initializeTasks() {
+      try {
+        const data = await loadTasks();
+
+        if (cancelled) return;
+
+        setTasks(data);
+      } catch (err) {
+        if (cancelled) return;
+
+        setError(
+          err instanceof Error ? err.message : "Failed to load tasks.",
+        );
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    void initializeTasks();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [loadTasks]);
 
   function openAddForm() {
     setEditingTaskId(null);
@@ -180,7 +195,6 @@ export default function TasksClient({
 
   function openEditForm(task: Task) {
     setEditingTaskId(task.id);
-
     setForm({
       title: task.title,
       description: task.description ?? "",
@@ -195,11 +209,9 @@ export default function TasksClient({
         : "",
       notes: task.notes ?? "",
     });
-
     setError("");
     setSuccess("");
     setShowForm(true);
-
     window.scrollTo({
       top: 0,
       behavior: "smooth",
@@ -208,7 +220,6 @@ export default function TasksClient({
 
   function closeForm() {
     if (saving) return;
-
     setShowForm(false);
     setEditingTaskId(null);
     setForm(initialForm);
@@ -272,7 +283,8 @@ export default function TasksClient({
       setEditingTaskId(null);
       setForm(initialForm);
 
-      await loadTasks();
+      const refreshed = await loadTasks();
+      setTasks(refreshed);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to save task.",
@@ -313,7 +325,8 @@ export default function TasksClient({
         closeForm();
       }
 
-      await loadTasks();
+      const refreshed = await loadTasks();
+      setTasks(refreshed);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to delete task.",
