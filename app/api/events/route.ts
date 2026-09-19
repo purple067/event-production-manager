@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
-import { headers } from "next/headers";
 
-import { auth } from "../../../src/lib/auth";
+import {
+  authorizationErrorResponse,
+  requireCurrentContext,
+  requireRole,
+} from "../../../src/lib/authorization";
+
 import { db } from "../../../src/prisma/db";
 
 type CreateEventBody = {
@@ -28,16 +32,15 @@ type EventStatus = (typeof allowedStatuses)[number];
 
 export async function POST(request: Request) {
   try {
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    });
+    const context = await requireCurrentContext();
 
-    if (!session?.user) {
-      return NextResponse.json(
-        { error: "Unauthorized." },
-        { status: 401 },
-      );
-    }
+    requireRole(
+      context,
+      "OWNER",
+      "ADMIN",
+      "PRODUCER",
+      "PRODUCTION_MANAGER",
+    );
 
     const body = (await request.json()) as CreateEventBody;
 
@@ -58,9 +61,7 @@ export async function POST(request: Request) {
 
     if (
       body.status !== undefined &&
-      !allowedStatuses.includes(
-        body.status as EventStatus,
-      )
+      !allowedStatuses.includes(body.status as EventStatus)
     ) {
       return NextResponse.json(
         { error: "Invalid event status." },
@@ -69,10 +70,7 @@ export async function POST(request: Request) {
     }
 
     const status: EventStatus =
-      body.status !== undefined &&
-      allowedStatuses.includes(
-        body.status as EventStatus,
-      )
+      body.status !== undefined
         ? (body.status as EventStatus)
         : "DRAFT";
 
@@ -96,45 +94,18 @@ export async function POST(request: Request) {
       );
     }
 
-    const user = await db.orm.public.User
-      .where({
-        authUserId: session.user.id,
-      })
-      .first();
-
-    if (!user) {
-      return NextResponse.json(
-        { error: "EPM user not found." },
-        { status: 404 },
-      );
-    }
-
-    const membership =
-      await db.orm.public.OrganizationMembership
-        .where({
-          userId: user.id,
-          status: "ACTIVE",
-        })
-        .first();
-
-    if (!membership) {
-      return NextResponse.json(
-        {
-          error:
-            "No active organization membership found.",
-        },
-        { status: 403 },
-      );
-    }
-
     const event = await db.orm.public.Event.create({
       name,
       description,
       status,
       startDate: start.toISOString(),
       endDate: end.toISOString(),
-      organizationId: membership.organizationId,
-      createdById: user.id,
+
+      // Tenant is always derived from the authenticated context.
+      organizationId: context.organization.id,
+
+      // Creator is always the authenticated EPM user.
+      createdById: context.user.id,
     });
 
     return NextResponse.json(
@@ -145,6 +116,13 @@ export async function POST(request: Request) {
       { status: 201 },
     );
   } catch (error) {
+    const authorizationResponse =
+      authorizationErrorResponse(error);
+
+    if (authorizationResponse) {
+      return authorizationResponse;
+    }
+
     console.error("Create event failed:", error);
 
     return NextResponse.json(

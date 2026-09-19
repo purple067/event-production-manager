@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
-import { headers } from "next/headers";
 
-import { auth } from "../../../../src/lib/auth";
+import {
+  authorizationErrorResponse,
+  requireCurrentContext,
+  requireRole,
+} from "../../../../src/lib/authorization";
+
 import { db } from "../../../../src/prisma/db";
 
 type EventRouteProps = {
@@ -32,24 +36,6 @@ const allowedStatuses = [
 
 type EventStatus = (typeof allowedStatuses)[number];
 
-async function getAuthenticatedUser() {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-
-  if (!session?.user) {
-    return null;
-  }
-
-  const user = await db.orm.public.User
-    .where({
-      authUserId: session.user.id,
-    })
-    .first();
-
-  return user;
-}
-
 function parseEventId(id: string) {
   const eventId = Number(id);
 
@@ -65,6 +51,8 @@ export async function GET(
   { params }: EventRouteProps,
 ) {
   try {
+    const context = await requireCurrentContext();
+
     const { id } = await params;
     const eventId = parseEventId(id);
 
@@ -75,37 +63,15 @@ export async function GET(
       );
     }
 
-    const user = await getAuthenticatedUser();
-
-    if (!user) {
-      return NextResponse.json(
-        { error: "Unauthorized." },
-        { status: 401 },
-      );
-    }
-
-    const membership =
-      await db.orm.public.OrganizationMembership
-        .where({
-          userId: user.id,
-          status: "ACTIVE",
-        })
-        .first();
-
-    if (!membership) {
-      return NextResponse.json(
-        {
-          error:
-            "No active organization membership found.",
-        },
-        { status: 403 },
-      );
-    }
-
+    /*
+     * Tenant boundary:
+     * The event must belong to the authenticated user's
+     * currently selected organization.
+     */
     const event = await db.orm.public.Event
       .where({
         id: eventId,
-        organizationId: membership.organizationId,
+        organizationId: context.organization.id,
       })
       .first();
 
@@ -121,6 +87,13 @@ export async function GET(
       event,
     });
   } catch (error) {
+    const authorizationResponse =
+      authorizationErrorResponse(error);
+
+    if (authorizationResponse) {
+      return authorizationResponse;
+    }
+
     console.error("Get event failed:", error);
 
     return NextResponse.json(
@@ -135,6 +108,16 @@ export async function PATCH(
   { params }: EventRouteProps,
 ) {
   try {
+    const context = await requireCurrentContext();
+
+    requireRole(
+      context,
+      "OWNER",
+      "ADMIN",
+      "PRODUCER",
+      "PRODUCTION_MANAGER",
+    );
+
     const { id } = await params;
     const eventId = parseEventId(id);
 
@@ -145,37 +128,14 @@ export async function PATCH(
       );
     }
 
-    const user = await getAuthenticatedUser();
-
-    if (!user) {
-      return NextResponse.json(
-        { error: "Unauthorized." },
-        { status: 401 },
-      );
-    }
-
-    const membership =
-      await db.orm.public.OrganizationMembership
-        .where({
-          userId: user.id,
-          status: "ACTIVE",
-        })
-        .first();
-
-    if (!membership) {
-      return NextResponse.json(
-        {
-          error:
-            "No active organization membership found.",
-        },
-        { status: 403 },
-      );
-    }
-
+    /*
+     * Scope the lookup by organization before allowing mutation.
+     * A different organization's event therefore appears as 404.
+     */
     const event = await db.orm.public.Event
       .where({
         id: eventId,
-        organizationId: membership.organizationId,
+        organizationId: context.organization.id,
       })
       .first();
 
@@ -217,9 +177,7 @@ export async function PATCH(
 
     if (
       body.status !== undefined &&
-      !allowedStatuses.includes(
-        body.status as EventStatus,
-      )
+      !allowedStatuses.includes(body.status as EventStatus)
     ) {
       return NextResponse.json(
         { error: "Invalid event status." },
@@ -259,7 +217,7 @@ export async function PATCH(
       await db.orm.public.Event
         .where({
           id: eventId,
-          organizationId: membership.organizationId,
+          organizationId: context.organization.id,
         })
         .update({
           name,
@@ -281,6 +239,13 @@ export async function PATCH(
       event: updatedEvent,
     });
   } catch (error) {
+    const authorizationResponse =
+      authorizationErrorResponse(error);
+
+    if (authorizationResponse) {
+      return authorizationResponse;
+    }
+
     console.error("Update event failed:", error);
 
     return NextResponse.json(
@@ -295,6 +260,14 @@ export async function DELETE(
   { params }: EventRouteProps,
 ) {
   try {
+    const context = await requireCurrentContext();
+
+    requireRole(
+      context,
+      "OWNER",
+      "ADMIN",
+    );
+
     const { id } = await params;
     const eventId = parseEventId(id);
 
@@ -305,38 +278,16 @@ export async function DELETE(
       );
     }
 
-    const user = await getAuthenticatedUser();
-
-    if (!user) {
-      return NextResponse.json(
-        { error: "Unauthorized." },
-        { status: 401 },
-      );
-    }
-
-    const membership =
-      await db.orm.public.OrganizationMembership
-        .where({
-          userId: user.id,
-          status: "ACTIVE",
-        })
-        .first();
-
-    if (!membership) {
-      return NextResponse.json(
-        {
-          error:
-            "No active organization membership found.",
-        },
-        { status: 403 },
-      );
-    }
-
+    /*
+     * Delete is tenant-scoped as well.
+     * An event belonging to another organization cannot be
+     * deleted and is intentionally reported as not found.
+     */
     const deletedEvent =
       await db.orm.public.Event
         .where({
           id: eventId,
-          organizationId: membership.organizationId,
+          organizationId: context.organization.id,
         })
         .delete();
 
@@ -352,6 +303,13 @@ export async function DELETE(
       event: deletedEvent,
     });
   } catch (error) {
+    const authorizationResponse =
+      authorizationErrorResponse(error);
+
+    if (authorizationResponse) {
+      return authorizationResponse;
+    }
+
     console.error("Delete event failed:", error);
 
     return NextResponse.json(
