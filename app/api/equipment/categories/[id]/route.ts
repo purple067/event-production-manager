@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
-import { getCurrentContext } from "../../../../../src/lib/session";
+
+import {
+  authorizationErrorResponse,
+  requireCurrentContext,
+  requireRole,
+} from "../../../../../src/lib/authorization";
 import { db } from "../../../../../src/prisma/db";
 
 type RouteContext = {
@@ -8,7 +13,10 @@ type RouteContext = {
   }>;
 };
 
-async function getCategory(id: number, organizationId: number) {
+async function getCategory(
+  id: number,
+  organizationId: number,
+) {
   return db.orm.public.EquipmentCategory
     .where({
       id,
@@ -17,81 +25,117 @@ async function getCategory(id: number, organizationId: number) {
     .first();
 }
 
+function getCategoryId(id: string) {
+  const categoryId = Number(id);
+
+  if (!Number.isInteger(categoryId) || categoryId <= 0) {
+    return null;
+  }
+
+  return categoryId;
+}
+
 export async function GET(
   _request: Request,
   context: RouteContext,
 ) {
-  const session = await getCurrentContext();
+  try {
+    const authContext = await requireCurrentContext();
 
-  if (!session) {
+    const { id: idParam } = await context.params;
+    const id = getCategoryId(idParam);
+
+    if (!id) {
+      return NextResponse.json(
+        { error: "Invalid category ID." },
+        { status: 400 },
+      );
+    }
+
+    const category = await getCategory(
+      id,
+      authContext.organization.id,
+    );
+
+    if (!category) {
+      return NextResponse.json(
+        { error: "Category not found." },
+        { status: 404 },
+      );
+    }
+
+    return NextResponse.json({ category });
+  } catch (error) {
+    const authorizationResponse =
+      authorizationErrorResponse(error);
+
+    if (authorizationResponse) {
+      return authorizationResponse;
+    }
+
+    console.error(
+      "Get equipment category failed:",
+      error,
+    );
+
     return NextResponse.json(
-      { error: "Unauthorized." },
-      { status: 401 },
+      { error: "Unable to load equipment category." },
+      { status: 500 },
     );
   }
-
-  const { id: idParam } = await context.params;
-  const id = Number(idParam);
-
-  if (!Number.isInteger(id) || id <= 0) {
-    return NextResponse.json(
-      { error: "Invalid category ID." },
-      { status: 400 },
-    );
-  }
-
-  const category = await getCategory(
-    id,
-    session.organization.id,
-  );
-
-  if (!category) {
-    return NextResponse.json(
-      { error: "Category not found." },
-      { status: 404 },
-    );
-  }
-
-  return NextResponse.json({ category });
 }
 
 export async function PATCH(
   request: Request,
   context: RouteContext,
 ) {
-  const session = await getCurrentContext();
-
-  if (!session) {
-    return NextResponse.json(
-      { error: "Unauthorized." },
-      { status: 401 },
-    );
-  }
-
-  const { id: idParam } = await context.params;
-  const id = Number(idParam);
-
-  if (!Number.isInteger(id) || id <= 0) {
-    return NextResponse.json(
-      { error: "Invalid category ID." },
-      { status: 400 },
-    );
-  }
-
-  const category = await getCategory(
-    id,
-    session.organization.id,
-  );
-
-  if (!category) {
-    return NextResponse.json(
-      { error: "Category not found." },
-      { status: 404 },
-    );
-  }
-
   try {
-    const body = await request.json();
+    const authContext = await requireCurrentContext();
+
+    requireRole(
+      authContext,
+      "OWNER",
+      "ADMIN",
+      "PRODUCER",
+      "PRODUCTION_MANAGER",
+    );
+
+    const { id: idParam } = await context.params;
+    const id = getCategoryId(idParam);
+
+    if (!id) {
+      return NextResponse.json(
+        { error: "Invalid category ID." },
+        { status: 400 },
+      );
+    }
+
+    const category = await getCategory(
+      id,
+      authContext.organization.id,
+    );
+
+    if (!category) {
+      return NextResponse.json(
+        { error: "Category not found." },
+        { status: 404 },
+      );
+    }
+
+    let body: {
+      name?: unknown;
+      code?: unknown;
+      description?: unknown;
+    };
+
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { error: "Invalid JSON body." },
+        { status: 400 },
+      );
+    }
 
     const data: {
       name?: string;
@@ -129,7 +173,7 @@ export async function PATCH(
       const duplicate =
         await db.orm.public.EquipmentCategory
           .where({
-            organizationId: session.organization.id,
+            organizationId: authContext.organization.id,
             code: data.code,
           })
           .first();
@@ -156,17 +200,29 @@ export async function PATCH(
       await db.orm.public.EquipmentCategory
         .where({
           id,
-          organizationId: session.organization.id,
+          organizationId: authContext.organization.id,
         })
         .update(data);
 
     return NextResponse.json({
       category: updated,
     });
-  } catch {
+  } catch (error) {
+    const authorizationResponse =
+      authorizationErrorResponse(error);
+
+    if (authorizationResponse) {
+      return authorizationResponse;
+    }
+
+    console.error(
+      "Update equipment category failed:",
+      error,
+    );
+
     return NextResponse.json(
-      { error: "Invalid request." },
-      { status: 400 },
+      { error: "Unable to update equipment category." },
+      { status: 500 },
     );
   }
 }
@@ -175,63 +231,81 @@ export async function DELETE(
   _request: Request,
   context: RouteContext,
 ) {
-  const session = await getCurrentContext();
+  try {
+    const authContext = await requireCurrentContext();
 
-  if (!session) {
-    return NextResponse.json(
-      { error: "Unauthorized." },
-      { status: 401 },
+    requireRole(
+      authContext,
+      "OWNER",
+      "ADMIN",
     );
-  }
 
-  const { id: idParam } = await context.params;
-  const id = Number(idParam);
+    const { id: idParam } = await context.params;
+    const id = getCategoryId(idParam);
 
-  if (!Number.isInteger(id) || id <= 0) {
-    return NextResponse.json(
-      { error: "Invalid category ID." },
-      { status: 400 },
-    );
-  }
+    if (!id) {
+      return NextResponse.json(
+        { error: "Invalid category ID." },
+        { status: 400 },
+      );
+    }
 
-  const category = await getCategory(
-    id,
-    session.organization.id,
-  );
-
-  if (!category) {
-    return NextResponse.json(
-      { error: "Category not found." },
-      { status: 404 },
-    );
-  }
-
-  const equipment =
-    await db.orm.public.Equipment
-      .where({
-        categoryId: id,
-        organizationId: session.organization.id,
-      })
-      .first();
-
-  if (equipment) {
-    return NextResponse.json(
-      {
-        error:
-          "Cannot delete this category because equipment is assigned to it.",
-      },
-      { status: 409 },
-    );
-  }
-
-  await db.orm.public.EquipmentCategory
-    .where({
+    const category = await getCategory(
       id,
-      organizationId: session.organization.id,
-    })
-    .delete();
+      authContext.organization.id,
+    );
 
-  return NextResponse.json({
-    success: true,
-  });
+    if (!category) {
+      return NextResponse.json(
+        { error: "Category not found." },
+        { status: 404 },
+      );
+    }
+
+    const equipment =
+      await db.orm.public.Equipment
+        .where({
+          categoryId: id,
+          organizationId: authContext.organization.id,
+        })
+        .first();
+
+    if (equipment) {
+      return NextResponse.json(
+        {
+          error:
+            "Cannot delete this category because equipment is assigned to it.",
+        },
+        { status: 409 },
+      );
+    }
+
+    await db.orm.public.EquipmentCategory
+      .where({
+        id,
+        organizationId: authContext.organization.id,
+      })
+      .delete();
+
+    return NextResponse.json({
+      success: true,
+    });
+  } catch (error) {
+    const authorizationResponse =
+      authorizationErrorResponse(error);
+
+    if (authorizationResponse) {
+      return authorizationResponse;
+    }
+
+    console.error(
+      "Delete equipment category failed:",
+      error,
+    );
+
+    return NextResponse.json(
+      { error: "Unable to delete equipment category." },
+      { status: 500 },
+    );
+  }
 }

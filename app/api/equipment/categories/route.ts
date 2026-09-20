@@ -1,39 +1,70 @@
 import { NextResponse } from "next/server";
-import { getCurrentContext } from "../../../../src/lib/session";
+
+import {
+  authorizationErrorResponse,
+  requireCurrentContext,
+  requireRole,
+} from "../../../../src/lib/authorization";
 import { db } from "../../../../src/prisma/db";
 
 export async function GET() {
-  const context = await getCurrentContext();
+  try {
+    const authContext = await requireCurrentContext();
 
-  if (!context) {
+    const categories = await db.orm.public.EquipmentCategory
+      .where({
+        organizationId: authContext.organization.id,
+      })
+      .orderBy((category) => category.name.asc())
+      .all();
+
+    return NextResponse.json({ categories });
+  } catch (error) {
+    const authorizationResponse =
+      authorizationErrorResponse(error);
+
+    if (authorizationResponse) {
+      return authorizationResponse;
+    }
+
+    console.error(
+      "Get equipment categories failed:",
+      error,
+    );
+
     return NextResponse.json(
-      { error: "Unauthorized." },
-      { status: 401 },
+      { error: "Unable to load equipment categories." },
+      { status: 500 },
     );
   }
-
-  const categories = await db.orm.public.EquipmentCategory
-    .where({
-      organizationId: context.organization.id,
-    })
-    .orderBy((category) => category.name.asc())
-    .all();
-
-  return NextResponse.json({ categories });
 }
 
 export async function POST(request: Request) {
-  const context = await getCurrentContext();
-
-  if (!context) {
-    return NextResponse.json(
-      { error: "Unauthorized." },
-      { status: 401 },
-    );
-  }
-
   try {
-    const body = await request.json();
+    const authContext = await requireCurrentContext();
+
+    requireRole(
+      authContext,
+      "OWNER",
+      "ADMIN",
+      "PRODUCER",
+      "PRODUCTION_MANAGER",
+    );
+
+    let body: {
+      name?: unknown;
+      code?: unknown;
+      description?: unknown;
+    };
+
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { error: "Invalid JSON body." },
+        { status: 400 },
+      );
+    }
 
     const name =
       typeof body.name === "string"
@@ -66,14 +97,17 @@ export async function POST(request: Request) {
 
     const existing = await db.orm.public.EquipmentCategory
       .where({
-        organizationId: context.organization.id,
+        organizationId: authContext.organization.id,
         code,
       })
       .first();
 
     if (existing) {
       return NextResponse.json(
-        { error: "A category with this code already exists." },
+        {
+          error:
+            "A category with this code already exists.",
+        },
         { status: 409 },
       );
     }
@@ -83,18 +117,29 @@ export async function POST(request: Request) {
         name,
         code,
         description: description || null,
-        organizationId: context.organization.id,
+        organizationId: authContext.organization.id,
       });
 
     return NextResponse.json(
       { category },
       { status: 201 },
     );
-  } catch {
+  } catch (error) {
+    const authorizationResponse =
+      authorizationErrorResponse(error);
+
+    if (authorizationResponse) {
+      return authorizationResponse;
+    }
+
+    console.error(
+      "Create equipment category failed:",
+      error,
+    );
+
     return NextResponse.json(
-      { error: "Invalid request." },
-      { status: 400 },
+      { error: "Unable to create equipment category." },
+      { status: 500 },
     );
   }
 }
-
