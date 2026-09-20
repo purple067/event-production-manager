@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
-import { headers } from "next/headers";
 
-import { auth } from "../../../../../../src/lib/auth";
+import {
+  authorizationErrorResponse,
+  requireCurrentContext,
+  requireRole,
+} from "../../../../../../src/lib/authorization";
 import { db } from "../../../../../../src/prisma/db";
 
 type RouteProps = {
@@ -44,65 +47,20 @@ function parseId(value: string) {
   return id;
 }
 
-async function getAuthenticatedUser() {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-
-  if (!session?.user) {
-    return null;
-  }
-
-  return db.orm.public.User
-    .where({
-      authUserId: session.user.id,
-    })
-    .first();
-}
-
-async function authorize(
+async function getAuthorizedDepartment(
   eventId: number,
   departmentId: number,
+  organizationId: number,
 ) {
-  const user = await getAuthenticatedUser();
-
-  if (!user) {
-    return {
-      user: null,
-      membership: null,
-      event: null,
-      department: null,
-    };
-  }
-
-  const membership =
-    await db.orm.public.OrganizationMembership
-      .where({
-        userId: user.id,
-        status: "ACTIVE",
-      })
-      .first();
-
-  if (!membership) {
-    return {
-      user,
-      membership: null,
-      event: null,
-      department: null,
-    };
-  }
-
   const event = await db.orm.public.Event
     .where({
       id: eventId,
-      organizationId: membership.organizationId,
+      organizationId,
     })
     .first();
 
   if (!event) {
     return {
-      user,
-      membership,
       event: null,
       department: null,
     };
@@ -117,8 +75,6 @@ async function authorize(
       .first();
 
   return {
-    user,
-    membership,
     event,
     department,
   };
@@ -129,9 +85,9 @@ export async function GET(
   { params }: RouteProps,
 ) {
   try {
-    const { id, departmentId } =
-      await params;
+    const authContext = await requireCurrentContext();
 
+    const { id, departmentId } = await params;
     const eventId = parseId(id);
     const parsedDepartmentId =
       parseId(departmentId);
@@ -143,27 +99,11 @@ export async function GET(
       );
     }
 
-    const result = await authorize(
+    const result = await getAuthorizedDepartment(
       eventId,
       parsedDepartmentId,
+      authContext.organization.id,
     );
-
-    if (!result.user) {
-      return NextResponse.json(
-        { error: "Unauthorized." },
-        { status: 401 },
-      );
-    }
-
-    if (!result.membership) {
-      return NextResponse.json(
-        {
-          error:
-            "No active organization membership found.",
-        },
-        { status: 403 },
-      );
-    }
 
     if (!result.event || !result.department) {
       return NextResponse.json(
@@ -177,6 +117,13 @@ export async function GET(
       department: result.department,
     });
   } catch (error) {
+    const authorizationResponse =
+      authorizationErrorResponse(error);
+
+    if (authorizationResponse) {
+      return authorizationResponse;
+    }
+
     console.error(
       "Get department failed:",
       error,
@@ -194,9 +141,17 @@ export async function PATCH(
   { params }: RouteProps,
 ) {
   try {
-    const { id, departmentId } =
-      await params;
+    const authContext = await requireCurrentContext();
 
+    requireRole(
+      authContext,
+      "OWNER",
+      "ADMIN",
+      "PRODUCER",
+      "PRODUCTION_MANAGER",
+    );
+
+    const { id, departmentId } = await params;
     const eventId = parseId(id);
     const parsedDepartmentId =
       parseId(departmentId);
@@ -208,27 +163,11 @@ export async function PATCH(
       );
     }
 
-    const result = await authorize(
+    const result = await getAuthorizedDepartment(
       eventId,
       parsedDepartmentId,
+      authContext.organization.id,
     );
-
-    if (!result.user) {
-      return NextResponse.json(
-        { error: "Unauthorized." },
-        { status: 401 },
-      );
-    }
-
-    if (!result.membership) {
-      return NextResponse.json(
-        {
-          error:
-            "No active organization membership found.",
-        },
-        { status: 403 },
-      );
-    }
 
     if (!result.event || !result.department) {
       return NextResponse.json(
@@ -297,6 +236,13 @@ export async function PATCH(
       department: updated,
     });
   } catch (error) {
+    const authorizationResponse =
+      authorizationErrorResponse(error);
+
+    if (authorizationResponse) {
+      return authorizationResponse;
+    }
+
     console.error(
       "Update department failed:",
       error,
@@ -314,9 +260,15 @@ export async function DELETE(
   { params }: RouteProps,
 ) {
   try {
-    const { id, departmentId } =
-      await params;
+    const authContext = await requireCurrentContext();
 
+    requireRole(
+      authContext,
+      "OWNER",
+      "ADMIN",
+    );
+
+    const { id, departmentId } = await params;
     const eventId = parseId(id);
     const parsedDepartmentId =
       parseId(departmentId);
@@ -328,27 +280,11 @@ export async function DELETE(
       );
     }
 
-    const result = await authorize(
+    const result = await getAuthorizedDepartment(
       eventId,
       parsedDepartmentId,
+      authContext.organization.id,
     );
-
-    if (!result.user) {
-      return NextResponse.json(
-        { error: "Unauthorized." },
-        { status: 401 },
-      );
-    }
-
-    if (!result.membership) {
-      return NextResponse.json(
-        {
-          error:
-            "No active organization membership found.",
-        },
-        { status: 403 },
-      );
-    }
 
     if (!result.event || !result.department) {
       return NextResponse.json(
@@ -377,6 +313,13 @@ export async function DELETE(
       department: deleted,
     });
   } catch (error) {
+    const authorizationResponse =
+      authorizationErrorResponse(error);
+
+    if (authorizationResponse) {
+      return authorizationResponse;
+    }
+
     console.error(
       "Delete department failed:",
       error,
