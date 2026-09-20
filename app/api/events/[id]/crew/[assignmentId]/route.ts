@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
-import { headers } from "next/headers";
 
-import { auth } from "../../../../../../src/lib/auth";
+import {
+  authorizationErrorResponse,
+  requireCurrentContext,
+  requireRole,
+} from "../../../../../../src/lib/authorization";
 import { db } from "../../../../../../src/prisma/db";
 
 const allowedStatuses = [
@@ -33,9 +36,7 @@ type UpdateAssignmentBody = {
   notes?: string | null;
 };
 
-function isActiveStatus(
-  status: AssignmentStatus,
-) {
+function isActiveStatus(status: AssignmentStatus) {
   return activeStatuses.includes(
     status as (typeof activeStatuses)[number],
   );
@@ -45,9 +46,7 @@ function isValidTransition(
   current: AssignmentStatus,
   next: AssignmentStatus,
 ) {
-  if (current === next) {
-    return true;
-  }
+  if (current === next) return true;
 
   switch (current) {
     case "PLANNED":
@@ -77,43 +76,6 @@ function isValidTransition(
   }
 }
 
-async function getOrganizationContext() {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-
-  if (!session?.user) {
-    return null;
-  }
-
-  const user = await db.orm.public.User
-    .where({
-      authUserId: session.user.id,
-    })
-    .first();
-
-  if (!user) {
-    return null;
-  }
-
-  const membership =
-    await db.orm.public.OrganizationMembership
-      .where({
-        userId: user.id,
-        status: "ACTIVE",
-      })
-      .first();
-
-  if (!membership) {
-    return null;
-  }
-
-  return {
-    user,
-    membership,
-  };
-}
-
 async function getAssignment(
   eventId: number,
   assignmentId: number,
@@ -126,9 +88,7 @@ async function getAssignment(
     })
     .first();
 
-  if (!event) {
-    return null;
-  }
+  if (!event) return null;
 
   return db.orm.public.CrewAssignment
     .where({
@@ -138,12 +98,8 @@ async function getAssignment(
     .first();
 }
 
-function parseDate(
-  value: string | null | undefined,
-) {
-  if (!value) {
-    return null;
-  }
+function parseDate(value: string | null | undefined) {
+  if (!value) return null;
 
   const date = new Date(value);
 
@@ -164,18 +120,9 @@ export async function GET(
   },
 ) {
   try {
-    const organizationContext =
-      await getOrganizationContext();
-
-    if (!organizationContext) {
-      return NextResponse.json(
-        { error: "Unauthorized." },
-        { status: 401 },
-      );
-    }
+    const authContext = await requireCurrentContext();
 
     const params = await context.params;
-
     const eventId = Number(params.id);
     const assignmentId = Number(params.assignmentId);
 
@@ -194,7 +141,7 @@ export async function GET(
     const assignment = await getAssignment(
       eventId,
       assignmentId,
-      organizationContext.membership.organizationId,
+      authContext.organization.id,
     );
 
     if (!assignment) {
@@ -208,6 +155,13 @@ export async function GET(
       assignment,
     });
   } catch (error) {
+    const authorizationResponse =
+      authorizationErrorResponse(error);
+
+    if (authorizationResponse) {
+      return authorizationResponse;
+    }
+
     console.error(
       "Get crew assignment failed:",
       error,
@@ -230,18 +184,17 @@ export async function PATCH(
   },
 ) {
   try {
-    const organizationContext =
-      await getOrganizationContext();
+    const authContext = await requireCurrentContext();
 
-    if (!organizationContext) {
-      return NextResponse.json(
-        { error: "Unauthorized." },
-        { status: 401 },
-      );
-    }
+    requireRole(
+      authContext,
+      "OWNER",
+      "ADMIN",
+      "PRODUCER",
+      "PRODUCTION_MANAGER",
+    );
 
     const params = await context.params;
-
     const eventId = Number(params.id);
     const assignmentId = Number(params.assignmentId);
 
@@ -257,12 +210,13 @@ export async function PATCH(
       );
     }
 
-    const existingAssignment =
-      await getAssignment(
-        eventId,
-        assignmentId,
-        organizationContext.membership.organizationId,
-      );
+    const organizationId = authContext.organization.id;
+
+    const existingAssignment = await getAssignment(
+      eventId,
+      assignmentId,
+      organizationId,
+    );
 
     if (!existingAssignment) {
       return NextResponse.json(
@@ -473,9 +427,7 @@ export async function PATCH(
             "id"
           FROM "crewMember"
           WHERE "id" = ${crewMemberId}
-            AND "organizationId" = ${
-              organizationContext.membership.organizationId
-            }
+            AND "organizationId" = ${organizationId}
           FOR UPDATE
         `
           .returnsRow({
@@ -622,6 +574,13 @@ export async function PATCH(
       assignment: result.assignment,
     });
   } catch (error) {
+    const authorizationResponse =
+      authorizationErrorResponse(error);
+
+    if (authorizationResponse) {
+      return authorizationResponse;
+    }
+
     console.error(
       "Update crew assignment failed:",
       error,
@@ -644,18 +603,17 @@ export async function DELETE(
   },
 ) {
   try {
-    const organizationContext =
-      await getOrganizationContext();
+    const authContext = await requireCurrentContext();
 
-    if (!organizationContext) {
-      return NextResponse.json(
-        { error: "Unauthorized." },
-        { status: 401 },
-      );
-    }
+    requireRole(
+      authContext,
+      "OWNER",
+      "ADMIN",
+      "PRODUCER",
+      "PRODUCTION_MANAGER",
+    );
 
     const params = await context.params;
-
     const eventId = Number(params.id);
     const assignmentId = Number(params.assignmentId);
 
@@ -674,7 +632,7 @@ export async function DELETE(
     const assignment = await getAssignment(
       eventId,
       assignmentId,
-      organizationContext.membership.organizationId,
+      authContext.organization.id,
     );
 
     if (!assignment) {
@@ -711,6 +669,13 @@ export async function DELETE(
       message: "Crew assignment deleted.",
     });
   } catch (error) {
+    const authorizationResponse =
+      authorizationErrorResponse(error);
+
+    if (authorizationResponse) {
+      return authorizationResponse;
+    }
+
     console.error(
       "Delete crew assignment failed:",
       error,
