@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
-import { headers } from "next/headers";
 
-import { auth } from "../../../../../src/lib/auth";
+import {
+  authorizationErrorResponse,
+  requireCurrentContext,
+  requireRole,
+} from "../../../../../src/lib/authorization";
 import { db } from "../../../../../src/prisma/db";
 
 type RouteProps = {
@@ -43,70 +46,13 @@ function parseId(value: string) {
   return id;
 }
 
-async function getAuthenticatedUser() {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-
-  if (!session?.user) {
-    return null;
-  }
-
-  return db.orm.public.User
-    .where({
-      authUserId: session.user.id,
-    })
-    .first();
-}
-
-async function getAuthorizedEvent(
-  eventId: number,
-) {
-  const user = await getAuthenticatedUser();
-
-  if (!user) {
-    return {
-      user: null,
-      membership: null,
-      event: null,
-    };
-  }
-
-  const membership =
-    await db.orm.public.OrganizationMembership
-      .where({
-        userId: user.id,
-        status: "ACTIVE",
-      })
-      .first();
-
-  if (!membership) {
-    return {
-      user,
-      membership: null,
-      event: null,
-    };
-  }
-
-  const event = await db.orm.public.Event
-    .where({
-      id: eventId,
-      organizationId: membership.organizationId,
-    })
-    .first();
-
-  return {
-    user,
-    membership,
-    event,
-  };
-}
-
 export async function GET(
   _request: Request,
   { params }: RouteProps,
 ) {
   try {
+    const authContext = await requireCurrentContext();
+
     const { id } = await params;
     const eventId = parseId(id);
 
@@ -117,27 +63,14 @@ export async function GET(
       );
     }
 
-    const result =
-      await getAuthorizedEvent(eventId);
+    const event = await db.orm.public.Event
+      .where({
+        id: eventId,
+        organizationId: authContext.organization.id,
+      })
+      .first();
 
-    if (!result.user) {
-      return NextResponse.json(
-        { error: "Unauthorized." },
-        { status: 401 },
-      );
-    }
-
-    if (!result.membership) {
-      return NextResponse.json(
-        {
-          error:
-            "No active organization membership found.",
-        },
-        { status: 403 },
-      );
-    }
-
-    if (!result.event) {
+    if (!event) {
       return NextResponse.json(
         { error: "Event not found." },
         { status: 404 },
@@ -160,6 +93,13 @@ export async function GET(
       departments,
     });
   } catch (error) {
+    const authorizationResponse =
+      authorizationErrorResponse(error);
+
+    if (authorizationResponse) {
+      return authorizationResponse;
+    }
+
     console.error(
       "Get departments failed:",
       error,
@@ -177,6 +117,16 @@ export async function POST(
   { params }: RouteProps,
 ) {
   try {
+    const authContext = await requireCurrentContext();
+
+    requireRole(
+      authContext,
+      "OWNER",
+      "ADMIN",
+      "PRODUCER",
+      "PRODUCTION_MANAGER",
+    );
+
     const { id } = await params;
     const eventId = parseId(id);
 
@@ -187,27 +137,14 @@ export async function POST(
       );
     }
 
-    const result =
-      await getAuthorizedEvent(eventId);
+    const event = await db.orm.public.Event
+      .where({
+        id: eventId,
+        organizationId: authContext.organization.id,
+      })
+      .first();
 
-    if (!result.user) {
-      return NextResponse.json(
-        { error: "Unauthorized." },
-        { status: 401 },
-      );
-    }
-
-    if (!result.membership) {
-      return NextResponse.json(
-        {
-          error:
-            "No active organization membership found.",
-        },
-        { status: 403 },
-      );
-    }
-
-    if (!result.event) {
+    if (!event) {
       return NextResponse.json(
         { error: "Event not found." },
         { status: 404 },
@@ -256,6 +193,13 @@ export async function POST(
       { status: 201 },
     );
   } catch (error) {
+    const authorizationResponse =
+      authorizationErrorResponse(error);
+
+    if (authorizationResponse) {
+      return authorizationResponse;
+    }
+
     console.error(
       "Create department failed:",
       error,
