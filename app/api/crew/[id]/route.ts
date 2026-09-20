@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
-import { headers } from "next/headers";
 
-import { auth } from "../../../../src/lib/auth";
+import {
+  authorizationErrorResponse,
+  requireCurrentContext,
+  requireRole,
+} from "../../../../src/lib/authorization";
+
 import { db } from "../../../../src/prisma/db";
 
 const allowedCrewTypes = [
@@ -18,6 +22,7 @@ const allowedStatuses = [
 ] as const;
 
 type CrewType = (typeof allowedCrewTypes)[number];
+
 type CrewStatus = (typeof allowedStatuses)[number];
 
 type UpdateCrewBody = {
@@ -37,36 +42,6 @@ type RouteContext = {
   }>;
 };
 
-async function getAuthenticatedUser() {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-
-  if (!session?.user) {
-    return null;
-  }
-
-  const user = await db.orm.public.User
-    .where({
-      authUserId: session.user.id,
-    })
-    .first();
-
-  return user;
-}
-
-async function getActiveOrganizationId(userId: number) {
-  const membership =
-    await db.orm.public.OrganizationMembership
-      .where({
-        userId,
-        status: "ACTIVE",
-      })
-      .first();
-
-  return membership?.organizationId ?? null;
-}
-
 function parseId(value: string) {
   const id = Number(value);
 
@@ -82,23 +57,7 @@ export async function GET(
   { params }: RouteContext,
 ) {
   try {
-    const user = await getAuthenticatedUser();
-
-    if (!user) {
-      return NextResponse.json(
-        { error: "Unauthorized." },
-        { status: 401 },
-      );
-    }
-
-    const organizationId = await getActiveOrganizationId(user.id);
-
-    if (!organizationId) {
-      return NextResponse.json(
-        { error: "No active organization membership found." },
-        { status: 403 },
-      );
-    }
+    const context = await requireCurrentContext();
 
     const { id: rawId } = await params;
     const id = parseId(rawId);
@@ -113,7 +72,7 @@ export async function GET(
     const crewMember = await db.orm.public.CrewMember
       .where({
         id,
-        organizationId,
+        organizationId: context.organization.id,
       })
       .first();
 
@@ -128,6 +87,13 @@ export async function GET(
       crewMember,
     });
   } catch (error) {
+    const authorizationResponse =
+      authorizationErrorResponse(error);
+
+    if (authorizationResponse) {
+      return authorizationResponse;
+    }
+
     console.error("Get crew member failed:", error);
 
     return NextResponse.json(
@@ -142,23 +108,15 @@ export async function PATCH(
   { params }: RouteContext,
 ) {
   try {
-    const user = await getAuthenticatedUser();
+    const context = await requireCurrentContext();
 
-    if (!user) {
-      return NextResponse.json(
-        { error: "Unauthorized." },
-        { status: 401 },
-      );
-    }
-
-    const organizationId = await getActiveOrganizationId(user.id);
-
-    if (!organizationId) {
-      return NextResponse.json(
-        { error: "No active organization membership found." },
-        { status: 403 },
-      );
-    }
+    requireRole(
+      context,
+      "OWNER",
+      "ADMIN",
+      "PRODUCER",
+      "PRODUCTION_MANAGER",
+    );
 
     const { id: rawId } = await params;
     const id = parseId(rawId);
@@ -174,7 +132,7 @@ export async function PATCH(
       await db.orm.public.CrewMember
         .where({
           id,
-          organizationId,
+          organizationId: context.organization.id,
         })
         .first();
 
@@ -233,7 +191,7 @@ export async function PATCH(
       await db.orm.public.CrewMember
         .where({
           id,
-          organizationId,
+          organizationId: context.organization.id,
         })
         .update({
           name,
@@ -273,6 +231,13 @@ export async function PATCH(
       crewMember,
     });
   } catch (error) {
+    const authorizationResponse =
+      authorizationErrorResponse(error);
+
+    if (authorizationResponse) {
+      return authorizationResponse;
+    }
+
     console.error("Update crew member failed:", error);
 
     return NextResponse.json(
@@ -287,23 +252,9 @@ export async function DELETE(
   { params }: RouteContext,
 ) {
   try {
-    const user = await getAuthenticatedUser();
+    const context = await requireCurrentContext();
 
-    if (!user) {
-      return NextResponse.json(
-        { error: "Unauthorized." },
-        { status: 401 },
-      );
-    }
-
-    const organizationId = await getActiveOrganizationId(user.id);
-
-    if (!organizationId) {
-      return NextResponse.json(
-        { error: "No active organization membership found." },
-        { status: 403 },
-      );
-    }
+    requireRole(context, "OWNER", "ADMIN");
 
     const { id: rawId } = await params;
     const id = parseId(rawId);
@@ -319,7 +270,7 @@ export async function DELETE(
       await db.orm.public.CrewMember
         .where({
           id,
-          organizationId,
+          organizationId: context.organization.id,
         })
         .first();
 
@@ -334,7 +285,7 @@ export async function DELETE(
       await db.orm.public.CrewMember
         .where({
           id,
-          organizationId,
+          organizationId: context.organization.id,
         })
         .delete();
 
@@ -350,6 +301,13 @@ export async function DELETE(
       crewMember: deletedCrewMember,
     });
   } catch (error) {
+    const authorizationResponse =
+      authorizationErrorResponse(error);
+
+    if (authorizationResponse) {
+      return authorizationResponse;
+    }
+
     console.error("Delete crew member failed:", error);
 
     return NextResponse.json(

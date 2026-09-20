@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
-import { headers } from "next/headers";
 
-import { auth } from "../../../src/lib/auth";
+import {
+  authorizationErrorResponse,
+  requireCurrentContext,
+  requireRole,
+} from "../../../src/lib/authorization";
+
 import { db } from "../../../src/prisma/db";
 
 const allowedCrewTypes = [
@@ -18,6 +22,7 @@ const allowedStatuses = [
 ] as const;
 
 type CrewType = (typeof allowedCrewTypes)[number];
+
 type CrewStatus = (typeof allowedStatuses)[number];
 
 type CreateCrewBody = {
@@ -31,57 +36,13 @@ type CreateCrewBody = {
   notes?: string;
 };
 
-async function getAuthenticatedUser() {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-
-  if (!session?.user) {
-    return null;
-  }
-
-  const user = await db.orm.public.User
-    .where({
-      authUserId: session.user.id,
-    })
-    .first();
-
-  if (!user) {
-    return null;
-  }
-
-  return user;
-}
-
 export async function GET() {
   try {
-    const user = await getAuthenticatedUser();
-
-    if (!user) {
-      return NextResponse.json(
-        { error: "Unauthorized." },
-        { status: 401 },
-      );
-    }
-
-    const membership =
-      await db.orm.public.OrganizationMembership
-        .where({
-          userId: user.id,
-          status: "ACTIVE",
-        })
-        .first();
-
-    if (!membership) {
-      return NextResponse.json(
-        { error: "No active organization membership found." },
-        { status: 403 },
-      );
-    }
+    const context = await requireCurrentContext();
 
     const crewMembers = await db.orm.public.CrewMember
       .where({
-        organizationId: membership.organizationId,
+        organizationId: context.organization.id,
       })
       .orderBy((crew) => crew.name.asc())
       .all();
@@ -90,6 +51,13 @@ export async function GET() {
       crewMembers,
     });
   } catch (error) {
+    const authorizationResponse =
+      authorizationErrorResponse(error);
+
+    if (authorizationResponse) {
+      return authorizationResponse;
+    }
+
     console.error("Get crew members failed:", error);
 
     return NextResponse.json(
@@ -101,14 +69,15 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const user = await getAuthenticatedUser();
+    const context = await requireCurrentContext();
 
-    if (!user) {
-      return NextResponse.json(
-        { error: "Unauthorized." },
-        { status: 401 },
-      );
-    }
+    requireRole(
+      context,
+      "OWNER",
+      "ADMIN",
+      "PRODUCER",
+      "PRODUCTION_MANAGER",
+    );
 
     const body = (await request.json()) as CreateCrewBody;
 
@@ -141,21 +110,6 @@ export async function POST(request: Request) {
       );
     }
 
-    const membership =
-      await db.orm.public.OrganizationMembership
-        .where({
-          userId: user.id,
-          status: "ACTIVE",
-        })
-        .first();
-
-    if (!membership) {
-      return NextResponse.json(
-        { error: "No active organization membership found." },
-        { status: 403 },
-      );
-    }
-
     const crewType: CrewType =
       body.crewType !== undefined
         ? (body.crewType as CrewType)
@@ -175,7 +129,7 @@ export async function POST(request: Request) {
       status,
       skills: body.skills?.trim() || null,
       notes: body.notes?.trim() || null,
-      organizationId: membership.organizationId,
+      organizationId: context.organization.id,
     });
 
     return NextResponse.json(
@@ -186,6 +140,13 @@ export async function POST(request: Request) {
       { status: 201 },
     );
   } catch (error) {
+    const authorizationResponse =
+      authorizationErrorResponse(error);
+
+    if (authorizationResponse) {
+      return authorizationResponse;
+    }
+
     console.error("Create crew member failed:", error);
 
     return NextResponse.json(
