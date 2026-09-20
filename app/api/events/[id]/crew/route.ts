@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
-import { headers } from "next/headers";
 
-import { auth } from "../../../../../src/lib/auth";
+import {
+  authorizationErrorResponse,
+  requireCurrentContext,
+  requireRole,
+} from "../../../../../src/lib/authorization";
 import { db } from "../../../../../src/prisma/db";
 
 const allowedStatuses = [
@@ -38,43 +41,6 @@ type CreateAssignmentBody = {
   notes?: string;
 };
 
-async function getOrganizationContext() {
-  const session = await auth.api.getSession({
-    headers: await headers(),
-  });
-
-  if (!session?.user) {
-    return null;
-  }
-
-  const user = await db.orm.public.User
-    .where({
-      authUserId: session.user.id,
-    })
-    .first();
-
-  if (!user) {
-    return null;
-  }
-
-  const membership =
-    await db.orm.public.OrganizationMembership
-      .where({
-        userId: user.id,
-        status: "ACTIVE",
-      })
-      .first();
-
-  if (!membership) {
-    return null;
-  }
-
-  return {
-    user,
-    membership,
-  };
-}
-
 async function getEvent(
   eventId: number,
   organizationId: number,
@@ -110,15 +76,7 @@ export async function GET(
   },
 ) {
   try {
-    const organizationContext =
-      await getOrganizationContext();
-
-    if (!organizationContext) {
-      return NextResponse.json(
-        { error: "Unauthorized." },
-        { status: 401 },
-      );
-    }
+    const authContext = await requireCurrentContext();
 
     const eventId = Number(
       (await context.params).id,
@@ -133,7 +91,7 @@ export async function GET(
 
     const event = await getEvent(
       eventId,
-      organizationContext.membership.organizationId,
+      authContext.organization.id,
     );
 
     if (!event) {
@@ -157,6 +115,13 @@ export async function GET(
       assignments,
     });
   } catch (error) {
+    const authorizationResponse =
+      authorizationErrorResponse(error);
+
+    if (authorizationResponse) {
+      return authorizationResponse;
+    }
+
     console.error("Get event crew failed:", error);
 
     return NextResponse.json(
@@ -173,15 +138,15 @@ export async function POST(
   },
 ) {
   try {
-    const organizationContext =
-      await getOrganizationContext();
+    const authContext = await requireCurrentContext();
 
-    if (!organizationContext) {
-      return NextResponse.json(
-        { error: "Unauthorized." },
-        { status: 401 },
-      );
-    }
+    requireRole(
+      authContext,
+      "OWNER",
+      "ADMIN",
+      "PRODUCER",
+      "PRODUCTION_MANAGER",
+    );
 
     const eventId = Number(
       (await context.params).id,
@@ -194,8 +159,7 @@ export async function POST(
       );
     }
 
-    const organizationId =
-      organizationContext.membership.organizationId;
+    const organizationId = authContext.organization.id;
 
     const event = await getEvent(
       eventId,
@@ -363,6 +327,7 @@ export async function POST(
        * for the same crew member therefore cannot both pass
        * the conflict check.
        */
+
       const crewLockPlan = db.raw.sql`
         SELECT
           "id"
@@ -402,6 +367,7 @@ export async function POST(
        *   10:00-18:00 + 18:00-22:00 = no conflict
        *   10:00-18:00 + 17:00-19:00 = conflict
        */
+
       if (
         activeStatuses.includes(
           assignmentStatus as (typeof activeStatuses)[number],
@@ -497,6 +463,13 @@ export async function POST(
       { status: 201 },
     );
   } catch (error) {
+    const authorizationResponse =
+      authorizationErrorResponse(error);
+
+    if (authorizationResponse) {
+      return authorizationResponse;
+    }
+
     console.error(
       "Create crew assignment failed:",
       error,
