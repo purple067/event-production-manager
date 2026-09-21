@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getCurrentContext } from "../../../../src/lib/session";
+import { requireCurrentContext } from "../../../../src/lib/authorization";
 import { db } from "../../../../src/prisma/db";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,11 +10,8 @@ import {
 } from "@/components/ui/card";
 
 export default async function EquipmentCategoriesPage() {
-  const context = await getCurrentContext();
+  const context = await requireCurrentContext();
 
-  if (!context) {
-    return null;
-  }
 
   const categories = await db.orm.public.EquipmentCategory
     .where({

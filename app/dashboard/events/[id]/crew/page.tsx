@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 
-import { getCurrentContext } from "../../../../../src/lib/session";
+import { requireCurrentContext } from "../../../../../src/lib/authorization";
 import { db } from "../../../../../src/prisma/db";
 
 type PageProps = {
@@ -16,11 +16,8 @@ export default async function EventCrewPage({ params }: PageProps) {
     notFound();
   }
 
-  const context = await getCurrentContext();
+  const context = await requireCurrentContext();
 
-  if (!context) {
-    redirect("/login");
-  }
 
   const event = await db.orm.public.Event
     .where({

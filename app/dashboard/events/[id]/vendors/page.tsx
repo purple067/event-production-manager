@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { notFound } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-import { getCurrentContext } from "../../../../../src/lib/session";
+import { requireCurrentContext } from "../../../../../src/lib/authorization";
 import { db } from "../../../../../src/prisma/db";
 
 type PageProps = {
@@ -68,11 +68,8 @@ export default async function EventVendorsPage({ params }: PageProps) {
     notFound();
   }
 
-  const context = await getCurrentContext();
+  const context = await requireCurrentContext();
 
-  if (!context) {
-    redirect("/login");
-  }
 
   const organizationId = context.organization.id;
 

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { getCurrentContext } from "../../../../../src/lib/session";
+import { requireCurrentContext } from "../../../../../src/lib/authorization";
 import { db } from "../../../../../src/prisma/db";
 
 type PageProps = {
@@ -39,11 +39,8 @@ const formatDateTime = (value: string | null) => {
 export default async function EventEquipmentPage({
   params,
 }: PageProps) {
-  const context = await getCurrentContext();
+  const context = await requireCurrentContext();
 
-  if (!context) {
-    notFound();
-  }
 
   const { id } = await params;
   const eventId = Number(id);

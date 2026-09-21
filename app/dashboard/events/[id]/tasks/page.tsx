@@ -1,5 +1,5 @@
-import { notFound, redirect } from "next/navigation";
-import { getCurrentContext } from "../../../../../src/lib/session";
+import { notFound } from "next/navigation";
+import { requireCurrentContext } from "../../../../../src/lib/authorization";
 import { db } from "../../../../../src/prisma/db";
 import TasksClient from "./tasks-client";
 
@@ -8,11 +8,8 @@ export default async function TasksPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const context = await getCurrentContext();
+  const context = await requireCurrentContext();
 
-  if (!context) {
-    redirect("/login");
-  }
 
   const { id } = await params;
   const eventId = Number(id);

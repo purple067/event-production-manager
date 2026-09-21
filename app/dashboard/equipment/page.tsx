@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getCurrentContext } from "../../../src/lib/session";
+import { requireCurrentContext } from "../../../src/lib/authorization";
 import { db } from "../../../src/prisma/db";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,11 +11,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 
 export default async function EquipmentPage() {
-  const context = await getCurrentContext();
+  const context = await requireCurrentContext();
 
-  if (!context) {
-    return null;
-  }
 
   const equipment = await db.orm.public.Equipment
     .where({

@@ -1,16 +1,12 @@
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { getCurrentContext } from "../../../src/lib/session";
+import { requireCurrentContext } from "../../../src/lib/authorization";
 import { db } from "../../../src/prisma/db";
 
 export default async function VendorsPage() {
-  const context = await getCurrentContext();
+  const context = await requireCurrentContext();
 
-  if (!context) {
-    redirect("/login");
-  }
 
   const vendors = await db.orm.public.Vendor
     .where({

@@ -10,7 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-import { getCurrentContext } from "../../../../src/lib/session";
+import { requireCurrentContext } from "../../../../src/lib/authorization";
 import { db } from "../../../../src/prisma/db";
 import { DeleteEventButton } from "./delete-event-button";
 
@@ -55,11 +55,8 @@ function getStatusVariant(
 export default async function EventDetailsPage({
   params,
 }: EventDetailsPageProps) {
-  const context = await getCurrentContext();
+  const context = await requireCurrentContext();
 
-  if (!context) {
-    notFound();
-  }
 
   const { id } = await params;
   const eventId = Number(id);

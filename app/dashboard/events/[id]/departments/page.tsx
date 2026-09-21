@@ -10,7 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 
-import { getCurrentContext } from "../../../../../src/lib/session";
+import { requireCurrentContext } from "../../../../../src/lib/authorization";
 import { db } from "../../../../../src/prisma/db";
 
 type PageProps = {
@@ -26,11 +26,8 @@ function formatType(type: string) {
 export default async function DepartmentsPage({
   params,
 }: PageProps) {
-  const context = await getCurrentContext();
+  const context = await requireCurrentContext();
 
-  if (!context) {
-    notFound();
-  }
 
   const { id } = await params;
   const eventId = Number(id);

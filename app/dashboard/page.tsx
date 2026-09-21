@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { getCurrentContext } from "../../src/lib/session";
+import { requireCurrentContext } from "../../src/lib/authorization";
 import { db } from "../../src/prisma/db";
 
 function formatDate(date: string) {
@@ -12,11 +12,8 @@ function formatDate(date: string) {
 }
 
 export default async function DashboardPage() {
-  const context = await getCurrentContext();
+  const context = await requireCurrentContext();
 
-  if (!context) {
-    return null;
-  }
 
   const organizationId = context.organization.id;
 

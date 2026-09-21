@@ -3,15 +3,12 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
-import { getCurrentContext } from "../../../src/lib/session";
+import { requireCurrentContext } from "../../../src/lib/authorization";
 import { db } from "../../../src/prisma/db";
 
 export default async function CrewPage() {
-  const context = await getCurrentContext();
+  const context = await requireCurrentContext();
 
-  if (!context) {
-    return null;
-  }
 
   const crewMembers = await db.orm.public.CrewMember
     .where({

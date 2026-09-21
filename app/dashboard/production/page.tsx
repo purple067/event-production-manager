@@ -1,14 +1,10 @@
-import { redirect } from "next/navigation";
-import { getCurrentContext } from "../../../src/lib/session";
+import { requireCurrentContext } from "../../../src/lib/authorization";
 import { db } from "../../../src/prisma/db";
 import ProductionClient from "./production-client";
 
 export default async function ProductionPage() {
-  const context = await getCurrentContext();
+  const context = await requireCurrentContext();
 
-  if (!context) {
-    redirect("/login");
-  }
 
   const organizationId = context.organization.id;
 
