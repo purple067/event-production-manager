@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 
-import { getCurrentContext } from "@/src/lib/session";
+import {
+  authorizationErrorResponse,
+  requireCurrentContext,
+  requireRole,
+} from "@/src/lib/authorization";
+
 import { db } from "@/src/prisma/db";
 
 function parsePositiveInt(value: string) {
@@ -24,44 +29,45 @@ export async function PATCH(
     }>;
   },
 ) {
-  const context = await getCurrentContext();
-
-  if (!context) {
-    return NextResponse.json(
-      { error: "Unauthorized." },
-      { status: 401 },
-    );
-  }
-
-  const resolvedParams = await params;
-
-  const eventId = parsePositiveInt(resolvedParams.id);
-  const assignmentId = parsePositiveInt(
-    resolvedParams.assignmentId,
-  );
-
-  if (!eventId || !assignmentId) {
-    return NextResponse.json(
-      { error: "Invalid ID." },
-      { status: 400 },
-    );
-  }
-
-  const event = await db.orm.public.Event
-    .where({
-      id: eventId,
-      organizationId: context.organization.id,
-    })
-    .first();
-
-  if (!event) {
-    return NextResponse.json(
-      { error: "Event not found." },
-      { status: 404 },
-    );
-  }
-
   try {
+    const context = await requireCurrentContext();
+
+    requireRole(
+      context,
+      "OWNER",
+      "ADMIN",
+      "PRODUCER",
+      "PRODUCTION_MANAGER",
+    );
+
+    const resolvedParams = await params;
+
+    const eventId = parsePositiveInt(resolvedParams.id);
+    const assignmentId = parsePositiveInt(
+      resolvedParams.assignmentId,
+    );
+
+    if (!eventId || !assignmentId) {
+      return NextResponse.json(
+        { error: "Invalid ID." },
+        { status: 400 },
+      );
+    }
+
+    const event = await db.orm.public.Event
+      .where({
+        id: eventId,
+        organizationId: context.organization.id,
+      })
+      .first();
+
+    if (!event) {
+      return NextResponse.json(
+        { error: "Event not found." },
+        { status: 404 },
+      );
+    }
+
     const body = await request.json();
     const action = body.action;
 
@@ -284,6 +290,13 @@ export async function PATCH(
       assignment: result.assignment,
     });
   } catch (error) {
+    const authorizationResponse =
+      authorizationErrorResponse(error);
+
+    if (authorizationResponse) {
+      return authorizationResponse;
+    }
+
     console.error(
       "Equipment operation failed:",
       error,
