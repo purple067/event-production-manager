@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentContext } from "../../../../../src/lib/session";
+import {
+  authorizationErrorResponse,
+  requireCurrentContext,
+  requireRole,
+} from "../../../../../src/lib/authorization";
 import { db } from "../../../../../src/prisma/db";
 
 const MILESTONE_TYPES = [
@@ -69,13 +73,19 @@ export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const context = await getCurrentContext();
+  let context;
 
-  if (!context) {
-    return NextResponse.json(
-      { error: "Unauthorized" },
-      { status: 401 },
-    );
+  try {
+    context = await requireCurrentContext();
+  } catch (error) {
+    const authorizationResponse =
+      authorizationErrorResponse(error);
+
+    if (authorizationResponse) {
+      return authorizationResponse;
+    }
+
+    throw error;
   }
 
   const { id } = await params;
@@ -119,13 +129,26 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const context = await getCurrentContext();
+  let context;
 
-  if (!context) {
-    return NextResponse.json(
-      { error: "Unauthorized" },
-      { status: 401 },
+  try {
+    context = await requireCurrentContext();
+    requireRole(
+      context,
+      "OWNER",
+      "ADMIN",
+      "PRODUCER",
+      "PRODUCTION_MANAGER",
     );
+  } catch (error) {
+    const authorizationResponse =
+      authorizationErrorResponse(error);
+
+    if (authorizationResponse) {
+      return authorizationResponse;
+    }
+
+    throw error;
   }
 
   const { id } = await params;
