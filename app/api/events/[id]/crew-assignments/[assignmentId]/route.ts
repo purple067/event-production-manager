@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 
-import { getCurrentContext } from "../../../../../../src/lib/session";
+import {
+  authorizationErrorResponse,
+  requireCurrentContext,
+  requireRole,
+} from "../../../../../../src/lib/authorization";
 import { db } from "../../../../../../src/prisma/db";
 
 const allowedStatuses = [
@@ -73,13 +77,25 @@ export async function PATCH(
   },
 ) {
   try {
-    const context = await getCurrentContext();
-
-    if (!context) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 },
+    let context;
+    try {
+      context = await requireCurrentContext();
+      requireRole(
+        context,
+        "OWNER",
+        "ADMIN",
+        "PRODUCER",
+        "PRODUCTION_MANAGER",
       );
+    } catch (error) {
+      const authorizationResponse =
+        authorizationErrorResponse(error);
+
+      if (authorizationResponse) {
+        return authorizationResponse;
+      }
+
+      throw error;
     }
 
     const { id, assignmentId } = await params;
