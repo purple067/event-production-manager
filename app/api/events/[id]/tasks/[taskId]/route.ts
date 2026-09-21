@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentContext } from "../../../../../../src/lib/session";
+import {
+  authorizationErrorResponse,
+  requireCurrentContext,
+  requireRole,
+} from "../../../../../../src/lib/authorization";
 import { db } from "../../../../../../src/prisma/db";
 
 function isValidPositiveInteger(value: unknown): value is number {
@@ -51,13 +55,19 @@ export async function GET(
     params: Promise<{ id: string; taskId: string }>;
   },
 ) {
-  const context = await getCurrentContext();
+  let context;
 
-  if (!context) {
-    return NextResponse.json(
-      { error: "Unauthorized." },
-      { status: 401 },
-    );
+  try {
+    context = await requireCurrentContext();
+  } catch (error) {
+    const authorizationResponse =
+      authorizationErrorResponse(error);
+
+    if (authorizationResponse) {
+      return authorizationResponse;
+    }
+
+    throw error;
   }
 
   const { id, taskId } = await params;
@@ -103,13 +113,26 @@ export async function PATCH(
     params: Promise<{ id: string; taskId: string }>;
   },
 ) {
-  const context = await getCurrentContext();
+  let context;
 
-  if (!context) {
-    return NextResponse.json(
-      { error: "Unauthorized." },
-      { status: 401 },
+  try {
+    context = await requireCurrentContext();
+    requireRole(
+      context,
+      "OWNER",
+      "ADMIN",
+      "PRODUCER",
+      "PRODUCTION_MANAGER",
     );
+  } catch (error) {
+    const authorizationResponse =
+      authorizationErrorResponse(error);
+
+    if (authorizationResponse) {
+      return authorizationResponse;
+    }
+
+    throw error;
   }
 
   const { id, taskId } = await params;
@@ -405,13 +428,26 @@ export async function DELETE(
     params: Promise<{ id: string; taskId: string }>;
   },
 ) {
-  const context = await getCurrentContext();
+  let context;
 
-  if (!context) {
-    return NextResponse.json(
-      { error: "Unauthorized." },
-      { status: 401 },
+  try {
+    context = await requireCurrentContext();
+    requireRole(
+      context,
+      "OWNER",
+      "ADMIN",
+      "PRODUCER",
+      "PRODUCTION_MANAGER",
     );
+  } catch (error) {
+    const authorizationResponse =
+      authorizationErrorResponse(error);
+
+    if (authorizationResponse) {
+      return authorizationResponse;
+    }
+
+    throw error;
   }
 
   const { id, taskId } = await params;
