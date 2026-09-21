@@ -1,38 +1,51 @@
 import { NextResponse } from "next/server";
-import { getCurrentContext } from "../../../src/lib/session";
+
+import {
+  authorizationErrorResponse,
+  requireCurrentContext,
+  requireRole,
+} from "../../../src/lib/authorization";
 import { db } from "../../../src/prisma/db";
 
 export async function GET() {
-  const context = await getCurrentContext();
+  try {
+    const context = await requireCurrentContext();
 
-  if (!context) {
+    const vendors = await db.orm.public.Vendor
+      .where({
+        organizationId: context.organization.id,
+      })
+      .orderBy((vendor) => vendor.name.asc())
+      .all();
+
+    return NextResponse.json({ vendors });
+  } catch (error) {
+    const authorizationResponse =
+      authorizationErrorResponse(error);
+
+    if (authorizationResponse) {
+      return authorizationResponse;
+    }
+
     return NextResponse.json(
-      { error: "Unauthorized." },
-      { status: 401 },
+      { error: "Failed to load vendors." },
+      { status: 500 },
     );
   }
-
-  const vendors = await db.orm.public.Vendor
-    .where({
-      organizationId: context.organization.id,
-    })
-    .orderBy((vendor) => vendor.name.asc())
-    .all();
-
-  return NextResponse.json({ vendors });
 }
 
 export async function POST(request: Request) {
-  const context = await getCurrentContext();
-
-  if (!context) {
-    return NextResponse.json(
-      { error: "Unauthorized." },
-      { status: 401 },
-    );
-  }
-
   try {
+    const context = await requireCurrentContext();
+
+    requireRole(
+      context,
+      "OWNER",
+      "ADMIN",
+      "PRODUCER",
+      "PRODUCTION_MANAGER",
+    );
+
     const body = await request.json();
 
     const name =
@@ -104,7 +117,14 @@ export async function POST(request: Request) {
       { vendor },
       { status: 201 },
     );
-  } catch {
+  } catch (error) {
+    const authorizationResponse =
+      authorizationErrorResponse(error);
+
+    if (authorizationResponse) {
+      return authorizationResponse;
+    }
+
     return NextResponse.json(
       { error: "Invalid request." },
       { status: 400 },

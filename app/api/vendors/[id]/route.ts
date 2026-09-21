@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
-import { getCurrentContext } from "../../../../src/lib/session";
+
+import {
+  authorizationErrorResponse,
+  requireCurrentContext,
+  requireRole,
+} from "../../../../src/lib/authorization";
 import { db } from "../../../../src/prisma/db";
 
 type RouteContext = {
@@ -20,80 +25,88 @@ export async function GET(
   _request: Request,
   { params }: RouteContext,
 ) {
-  const context = await getCurrentContext();
+  try {
+    const context = await requireCurrentContext();
 
-  if (!context) {
+    const { id: idParam } = await params;
+    const id = getVendorId(idParam);
+
+    if (!id) {
+      return NextResponse.json(
+        { error: "Invalid vendor ID." },
+        { status: 400 },
+      );
+    }
+
+    const vendor = await db.orm.public.Vendor
+      .where({
+        id,
+        organizationId: context.organization.id,
+      })
+      .first();
+
+    if (!vendor) {
+      return NextResponse.json(
+        { error: "Vendor not found." },
+        { status: 404 },
+      );
+    }
+
+    return NextResponse.json({ vendor });
+  } catch (error) {
+    const authorizationResponse =
+      authorizationErrorResponse(error);
+
+    if (authorizationResponse) {
+      return authorizationResponse;
+    }
+
     return NextResponse.json(
-      { error: "Unauthorized." },
-      { status: 401 },
+      { error: "Failed to load vendor." },
+      { status: 500 },
     );
   }
-
-  const { id: idParam } = await params;
-  const id = getVendorId(idParam);
-
-  if (!id) {
-    return NextResponse.json(
-      { error: "Invalid vendor ID." },
-      { status: 400 },
-    );
-  }
-
-  const vendor = await db.orm.public.Vendor
-    .where({
-      id,
-      organizationId: context.organization.id,
-    })
-    .first();
-
-  if (!vendor) {
-    return NextResponse.json(
-      { error: "Vendor not found." },
-      { status: 404 },
-    );
-  }
-
-  return NextResponse.json({ vendor });
 }
 
 export async function PATCH(
   request: Request,
   { params }: RouteContext,
 ) {
-  const context = await getCurrentContext();
-
-  if (!context) {
-    return NextResponse.json(
-      { error: "Unauthorized." },
-      { status: 401 },
-    );
-  }
-
-  const { id: idParam } = await params;
-  const id = getVendorId(idParam);
-
-  if (!id) {
-    return NextResponse.json(
-      { error: "Invalid vendor ID." },
-      { status: 400 },
-    );
-  }
-
-  const existing = await db.orm.public.Vendor
-    .where({
-      id,
-      organizationId: context.organization.id,
-    })
-    .first();
-
-  if (!existing) {
-    return NextResponse.json(
-      { error: "Vendor not found." },
-      { status: 404 },
-    );
-  }
-
   try {
+    const context = await requireCurrentContext();
+
+    requireRole(
+      context,
+      "OWNER",
+      "ADMIN",
+      "PRODUCER",
+      "PRODUCTION_MANAGER",
+    );
+
+    const { id: idParam } = await params;
+    const id = getVendorId(idParam);
+
+    if (!id) {
+      return NextResponse.json(
+        { error: "Invalid vendor ID." },
+        { status: 400 },
+      );
+    }
+
+    const existing = await db.orm.public.Vendor
+      .where({
+        id,
+        organizationId: context.organization.id,
+      })
+      .first();
+
+    if (!existing) {
+      return NextResponse.json(
+        { error: "Vendor not found." },
+        { status: 404 },
+      );
+    }
+
     const body = await request.json();
 
     const data: {
@@ -109,7 +122,10 @@ export async function PATCH(
     } = {};
 
     if (body.name !== undefined) {
-      if (typeof body.name !== "string" || !body.name.trim()) {
+      if (
+        typeof body.name !== "string" ||
+        !body.name.trim()
+      ) {
         return NextResponse.json(
           { error: "Vendor name cannot be empty." },
           { status: 400 },
@@ -187,7 +203,14 @@ export async function PATCH(
     }
 
     return NextResponse.json({ vendor });
-  } catch {
+  } catch (error) {
+    const authorizationResponse =
+      authorizationErrorResponse(error);
+
+    if (authorizationResponse) {
+      return authorizationResponse;
+    }
+
     return NextResponse.json(
       { error: "Invalid request." },
       { status: 400 },
@@ -199,47 +222,60 @@ export async function DELETE(
   _request: Request,
   { params }: RouteContext,
 ) {
-  const context = await getCurrentContext();
+  try {
+    const context = await requireCurrentContext();
 
-  if (!context) {
+    requireRole(
+      context,
+      "OWNER",
+      "ADMIN",
+    );
+
+    const { id: idParam } = await params;
+    const id = getVendorId(idParam);
+
+    if (!id) {
+      return NextResponse.json(
+        { error: "Invalid vendor ID." },
+        { status: 400 },
+      );
+    }
+
+    const vendor = await db.orm.public.Vendor
+      .where({
+        id,
+        organizationId: context.organization.id,
+      })
+      .first();
+
+    if (!vendor) {
+      return NextResponse.json(
+        { error: "Vendor not found." },
+        { status: 404 },
+      );
+    }
+
+    await db.orm.public.Vendor
+      .where({
+        id,
+        organizationId: context.organization.id,
+      })
+      .delete();
+
+    return NextResponse.json({
+      success: true,
+    });
+  } catch (error) {
+    const authorizationResponse =
+      authorizationErrorResponse(error);
+
+    if (authorizationResponse) {
+      return authorizationResponse;
+    }
+
     return NextResponse.json(
-      { error: "Unauthorized." },
-      { status: 401 },
+      { error: "Failed to delete vendor." },
+      { status: 500 },
     );
   }
-
-  const { id: idParam } = await params;
-  const id = getVendorId(idParam);
-
-  if (!id) {
-    return NextResponse.json(
-      { error: "Invalid vendor ID." },
-      { status: 400 },
-    );
-  }
-
-  const vendor = await db.orm.public.Vendor
-    .where({
-      id,
-      organizationId: context.organization.id,
-    })
-    .first();
-
-  if (!vendor) {
-    return NextResponse.json(
-      { error: "Vendor not found." },
-      { status: 404 },
-    );
-  }
-
-  await db.orm.public.Vendor
-    .where({
-      id,
-      organizationId: context.organization.id,
-    })
-    .delete();
-
-  return NextResponse.json({
-    success: true,
-  });
 }
