@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 
 import { OrganizationSwitcher } from "./organization-switcher";
-import { getCurrentContext } from "../../src/lib/session";
+import { requireCurrentContext } from "../../src/lib/authorization";
 
 const navigation = [
   {
@@ -70,11 +70,8 @@ const navigation = [
 ];
 
 export async function Sidebar() {
-  const context = await getCurrentContext();
+  const context = await requireCurrentContext();
 
-  if (!context) {
-    return null;
-  }
 
   const organizations = context.organizations
     .filter((item) => item.organization !== null)
