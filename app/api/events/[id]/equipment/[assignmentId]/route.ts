@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 
-import { getCurrentContext } from "../../../../../../src/lib/session";
+import {
+  authorizationErrorResponse,
+  requireCurrentContext,
+  requireRole,
+} from "../../../../../../src/lib/authorization";
 import { db } from "../../../../../../src/prisma/db";
 
 function parsePositiveInt(value: string) {
@@ -24,59 +28,68 @@ export async function GET(
     }>;
   },
 ) {
-  const context = await getCurrentContext();
+  try {
+    const context = await requireCurrentContext();
 
-  if (!context) {
-    return NextResponse.json(
-      { error: "Unauthorized." },
-      { status: 401 },
-    );
-  }
+    const resolvedParams = await params;
+    const eventId = parsePositiveInt(resolvedParams.id);
+    const assignmentId = parsePositiveInt(resolvedParams.assignmentId);
 
-  const resolvedParams = await params;
+    if (!eventId || !assignmentId) {
+      return NextResponse.json(
+        { error: "Invalid ID." },
+        { status: 400 },
+      );
+    }
 
-  const eventId = parsePositiveInt(resolvedParams.id);
-  const assignmentId = parsePositiveInt(
-    resolvedParams.assignmentId,
-  );
-
-  if (!eventId || !assignmentId) {
-    return NextResponse.json(
-      { error: "Invalid ID." },
-      { status: 400 },
-    );
-  }
-
-  const event = await db.orm.public.Event
-    .where({
-      id: eventId,
-      organizationId: context.organization.id,
-    })
-    .first();
-
-  if (!event) {
-    return NextResponse.json(
-      { error: "Event not found." },
-      { status: 404 },
-    );
-  }
-
-  const assignment =
-    await db.orm.public.EquipmentAssignment
+    const event = await db.orm.public.Event
       .where({
-        id: assignmentId,
-        eventId,
+        id: eventId,
+        organizationId: context.organization.id,
       })
       .first();
 
-  if (!assignment) {
+    if (!event) {
+      return NextResponse.json(
+        { error: "Event not found." },
+        { status: 404 },
+      );
+    }
+
+    const assignment =
+      await db.orm.public.EquipmentAssignment
+        .where({
+          id: assignmentId,
+          eventId,
+        })
+        .first();
+
+    if (!assignment) {
+      return NextResponse.json(
+        { error: "Equipment assignment not found." },
+        { status: 404 },
+      );
+    }
+
+    return NextResponse.json({ assignment });
+  } catch (error) {
+    const authorizationResponse =
+      authorizationErrorResponse(error);
+
+    if (authorizationResponse) {
+      return authorizationResponse;
+    }
+
+    console.error(
+      "Equipment assignment fetch failed:",
+      error,
+    );
+
     return NextResponse.json(
-      { error: "Equipment assignment not found." },
-      { status: 404 },
+      { error: "Invalid request." },
+      { status: 400 },
     );
   }
-
-  return NextResponse.json({ assignment });
 }
 
 export async function PATCH(
@@ -90,67 +103,67 @@ export async function PATCH(
     }>;
   },
 ) {
-  const context = await getCurrentContext();
+  try {
+    const context = await requireCurrentContext();
 
-  if (!context) {
-    return NextResponse.json(
-      { error: "Unauthorized." },
-      { status: 401 },
+    requireRole(
+      context,
+      "OWNER",
+      "ADMIN",
+      "PRODUCER",
+      "PRODUCTION_MANAGER",
     );
-  }
 
-  const resolvedParams = await params;
-
-  const eventId = parsePositiveInt(resolvedParams.id);
-  const assignmentId = parsePositiveInt(
-    resolvedParams.assignmentId,
-  );
-
-  if (!eventId || !assignmentId) {
-    return NextResponse.json(
-      { error: "Invalid ID." },
-      { status: 400 },
+    const resolvedParams = await params;
+    const eventId = parsePositiveInt(resolvedParams.id);
+    const assignmentId = parsePositiveInt(
+      resolvedParams.assignmentId,
     );
-  }
 
-  const event = await db.orm.public.Event
-    .where({
-      id: eventId,
-      organizationId: context.organization.id,
-    })
-    .first();
+    if (!eventId || !assignmentId) {
+      return NextResponse.json(
+        { error: "Invalid ID." },
+        { status: 400 },
+      );
+    }
 
-  if (!event) {
-    return NextResponse.json(
-      { error: "Event not found." },
-      { status: 404 },
-    );
-  }
-
-  const assignment =
-    await db.orm.public.EquipmentAssignment
+    const event = await db.orm.public.Event
       .where({
-        id: assignmentId,
-        eventId,
+        id: eventId,
+        organizationId: context.organization.id,
       })
       .first();
 
-  if (!assignment) {
-    return NextResponse.json(
-      { error: "Equipment assignment not found." },
-      { status: 404 },
-    );
-  }
+    if (!event) {
+      return NextResponse.json(
+        { error: "Event not found." },
+        { status: 404 },
+      );
+    }
 
-  try {
+    const assignment =
+      await db.orm.public.EquipmentAssignment
+        .where({
+          id: assignmentId,
+          eventId,
+        })
+        .first();
+
+    if (!assignment) {
+      return NextResponse.json(
+        { error: "Equipment assignment not found." },
+        { status: 404 },
+      );
+    }
+
     const body = await request.json();
 
     /*
      * Lifecycle fields are intentionally excluded from this endpoint.
      *
-     * status       -> operation endpoint
-     * allocatedAt  -> CHECK_IN operation
-     * returnedAt   -> RETURN operation
+     * status      -> operation endpoint
+     * allocatedAt -> CHECK_IN operation
+     * returnedAt  -> RETURN operation
      *
      * This prevents generic PATCH from bypassing lifecycle rules.
      */
@@ -332,6 +345,7 @@ export async function PATCH(
        * Equipment quantity is inventory-sensitive only while
        * the assignment is in an active inventory state.
        */
+
       const activeStatuses = [
         "PLANNED",
         "CONFIRMED",
@@ -478,6 +492,13 @@ export async function PATCH(
       assignment: result.assignment,
     });
   } catch (error) {
+    const authorizationResponse =
+      authorizationErrorResponse(error);
+
+    if (authorizationResponse) {
+      return authorizationResponse;
+    }
+
     console.error(
       "Equipment assignment update failed:",
       error,
@@ -489,6 +510,7 @@ export async function PATCH(
     );
   }
 }
+
 export async function DELETE(
   _request: Request,
   {
@@ -500,66 +522,85 @@ export async function DELETE(
     }>;
   },
 ) {
-  const context = await getCurrentContext();
+  try {
+    const context = await requireCurrentContext();
 
-  if (!context) {
-    return NextResponse.json(
-      { error: "Unauthorized." },
-      { status: 401 },
+    requireRole(
+      context,
+      "OWNER",
+      "ADMIN",
+      "PRODUCER",
+      "PRODUCTION_MANAGER",
     );
-  }
 
-  const resolvedParams = await params;
-
-  const eventId = parsePositiveInt(resolvedParams.id);
-  const assignmentId = parsePositiveInt(
-    resolvedParams.assignmentId,
-  );
-
-  if (!eventId || !assignmentId) {
-    return NextResponse.json(
-      { error: "Invalid ID." },
-      { status: 400 },
+    const resolvedParams = await params;
+    const eventId = parsePositiveInt(resolvedParams.id);
+    const assignmentId = parsePositiveInt(
+      resolvedParams.assignmentId,
     );
-  }
 
-  const event = await db.orm.public.Event
-    .where({
-      id: eventId,
-      organizationId: context.organization.id,
-    })
-    .first();
+    if (!eventId || !assignmentId) {
+      return NextResponse.json(
+        { error: "Invalid ID." },
+        { status: 400 },
+      );
+    }
 
-  if (!event) {
-    return NextResponse.json(
-      { error: "Event not found." },
-      { status: 404 },
-    );
-  }
+    const event = await db.orm.public.Event
+      .where({
+        id: eventId,
+        organizationId: context.organization.id,
+      })
+      .first();
 
-  const assignment =
+    if (!event) {
+      return NextResponse.json(
+        { error: "Event not found." },
+        { status: 404 },
+      );
+    }
+
+    const assignment =
+      await db.orm.public.EquipmentAssignment
+        .where({
+          id: assignmentId,
+          eventId,
+        })
+        .first();
+
+    if (!assignment) {
+      return NextResponse.json(
+        { error: "Equipment assignment not found." },
+        { status: 404 },
+      );
+    }
+
     await db.orm.public.EquipmentAssignment
       .where({
         id: assignmentId,
         eventId,
       })
-      .first();
+      .delete();
 
-  if (!assignment) {
+    return NextResponse.json({
+      success: true,
+    });
+  } catch (error) {
+    const authorizationResponse =
+      authorizationErrorResponse(error);
+
+    if (authorizationResponse) {
+      return authorizationResponse;
+    }
+
+    console.error(
+      "Equipment assignment deletion failed:",
+      error,
+    );
+
     return NextResponse.json(
-      { error: "Equipment assignment not found." },
-      { status: 404 },
+      { error: "Invalid request." },
+      { status: 400 },
     );
   }
-
-  await db.orm.public.EquipmentAssignment
-    .where({
-      id: assignmentId,
-      eventId,
-    })
-    .delete();
-
-  return NextResponse.json({
-    success: true,
-  });
 }

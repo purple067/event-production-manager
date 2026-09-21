@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 
-import { getCurrentContext } from "../../../../../src/lib/session";
+import {
+  authorizationErrorResponse,
+  requireCurrentContext,
+  requireRole,
+} from "../../../../../src/lib/authorization";
 import { db } from "../../../../../src/prisma/db";
 
 const ASSIGNMENT_STATUSES = [
@@ -26,86 +30,116 @@ export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const context = await getCurrentContext();
+  try {
+    const authContext = await requireCurrentContext();
 
-  if (!context) {
+    const eventId = getEventId(await params);
+
+    if (!eventId) {
+      return NextResponse.json(
+        { error: "Invalid event ID." },
+        { status: 400 },
+      );
+    }
+
+    const event = await db.orm.public.Event
+      .where({
+        id: eventId,
+        organizationId: authContext.organization.id,
+      })
+      .first();
+
+    if (!event) {
+      return NextResponse.json(
+        { error: "Event not found." },
+        { status: 404 },
+      );
+    }
+
+    const assignments = await db.orm.public.EquipmentAssignment
+      .where({
+        eventId,
+      })
+      .orderBy((assignment) => assignment.id.desc())
+      .all();
+
+    return NextResponse.json({ assignments });
+  } catch (error) {
+    const authorizationResponse =
+      authorizationErrorResponse(error);
+
+    if (authorizationResponse) {
+      return authorizationResponse;
+    }
+
+    console.error(
+      "Get event equipment assignments failed:",
+      error,
+    );
+
     return NextResponse.json(
-      { error: "Unauthorized." },
-      { status: 401 },
+      { error: "Unable to load equipment assignments." },
+      { status: 500 },
     );
   }
-
-  const eventId = getEventId(await params);
-
-  if (!eventId) {
-    return NextResponse.json(
-      { error: "Invalid event ID." },
-      { status: 400 },
-    );
-  }
-
-  const event = await db.orm.public.Event
-    .where({
-      id: eventId,
-      organizationId: context.organization.id,
-    })
-    .first();
-
-  if (!event) {
-    return NextResponse.json(
-      { error: "Event not found." },
-      { status: 404 },
-    );
-  }
-
-  const assignments = await db.orm.public.EquipmentAssignment
-    .where({
-      eventId,
-    })
-    .orderBy((assignment) => assignment.id.desc())
-    .all();
-
-  return NextResponse.json({ assignments });
 }
 
 export async function POST(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const context = await getCurrentContext();
-
-  if (!context) {
-    return NextResponse.json(
-      { error: "Unauthorized." },
-      { status: 401 },
-    );
-  }
-
-  const eventId = getEventId(await params);
-
-  if (!eventId) {
-    return NextResponse.json(
-      { error: "Invalid event ID." },
-      { status: 400 },
-    );
-  }
-
-  const event = await db.orm.public.Event
-    .where({
-      id: eventId,
-      organizationId: context.organization.id,
-    })
-    .first();
-
-  if (!event) {
-    return NextResponse.json(
-      { error: "Event not found." },
-      { status: 404 },
-    );
-  }
-
   try {
-    const body = await request.json();
+    const authContext = await requireCurrentContext();
+
+    requireRole(
+      authContext,
+      "OWNER",
+      "ADMIN",
+      "PRODUCER",
+      "PRODUCTION_MANAGER",
+    );
+
+    const eventId = getEventId(await params);
+
+    if (!eventId) {
+      return NextResponse.json(
+        { error: "Invalid event ID." },
+        { status: 400 },
+      );
+    }
+
+    const event = await db.orm.public.Event
+      .where({
+        id: eventId,
+        organizationId: authContext.organization.id,
+      })
+      .first();
+
+    if (!event) {
+      return NextResponse.json(
+        { error: "Event not found." },
+        { status: 404 },
+      );
+    }
+
+    let body: {
+      equipmentId?: unknown;
+      departmentId?: unknown;
+      quantity?: unknown;
+      status?: unknown;
+      allocatedAt?: unknown;
+      returnedAt?: unknown;
+      notes?: unknown;
+    };
+
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { error: "Invalid JSON body." },
+        { status: 400 },
+      );
+    }
 
     const equipmentId = Number(body.equipmentId);
 
@@ -172,7 +206,7 @@ export async function POST(
       );
     }
 
-    if (!ASSIGNMENT_STATUSES.includes(status)) {
+    if (!ASSIGNMENT_STATUSES.includes(status as never)) {
       return NextResponse.json(
         { error: "Invalid assignment status." },
         { status: 400 },
@@ -239,7 +273,7 @@ export async function POST(
     const equipment = await db.orm.public.Equipment
       .where({
         id: equipmentId,
-        organizationId: context.organization.id,
+        organizationId: authContext.organization.id,
       })
       .first();
 
@@ -360,7 +394,10 @@ export async function POST(
         eventId,
         departmentId,
         quantity,
-        status,
+        status:
+          status as
+            | "PLANNED"
+            | "CONFIRMED",
         allocatedAt,
         returnedAt: null,
         notes: notes || null,
@@ -372,6 +409,13 @@ export async function POST(
       { status: 201 },
     );
   } catch (error) {
+    const authorizationResponse =
+      authorizationErrorResponse(error);
+
+    if (authorizationResponse) {
+      return authorizationResponse;
+    }
+
     if (
       error instanceof Error &&
       error.message === "EQUIPMENT_NOT_FOUND"
@@ -407,7 +451,10 @@ export async function POST(
       );
     }
 
-    console.error("Equipment assignment creation failed:", error);
+    console.error(
+      "Equipment assignment creation failed:",
+      error,
+    );
 
     return NextResponse.json(
       { error: "Invalid request." },
