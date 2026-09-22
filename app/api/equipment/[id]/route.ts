@@ -219,6 +219,17 @@ export async function PATCH(
       );
     }
 
+    if (body.purchaseDate !== undefined && body.purchaseDate !== null) {
+      const purchaseDate = new Date(body.purchaseDate);
+
+      if (Number.isNaN(purchaseDate.getTime())) {
+        return NextResponse.json(
+          { error: "Invalid purchase date." },
+          { status: 400 },
+        );
+      }
+    }
+
     if (body.categoryId !== undefined) {
       if (
         !Number.isInteger(body.categoryId) ||
@@ -245,73 +256,159 @@ export async function PATCH(
       }
     }
 
-    const equipment = await db.orm.public.Equipment
-      .where({
-        id: equipmentId,
-        organizationId: authContext.organization.id,
-      })
-      .update({
-        name:
-          body.name !== undefined
-            ? body.name.trim()
-            : undefined,
-        description:
-          body.description !== undefined
-            ? body.description?.trim() || null
-            : undefined,
-        model:
-          body.model !== undefined
-            ? body.model?.trim() || null
-            : undefined,
-        manufacturer:
-          body.manufacturer !== undefined
-            ? body.manufacturer?.trim() || null
-            : undefined,
-        serialNumber:
-          body.serialNumber !== undefined
-            ? body.serialNumber?.trim() || null
-            : undefined,
-        assetNumber:
-          body.assetNumber !== undefined
-            ? body.assetNumber?.trim() || null
-            : undefined,
-        quantity:
-          body.quantity !== undefined
-            ? body.quantity
-            : undefined,
-        status:
-          body.status !== undefined
-            ? body.status as (typeof EQUIPMENT_STATUSES)[number]
-            : undefined,
-        condition:
-          body.condition !== undefined
-            ? body.condition as (typeof EQUIPMENT_CONDITIONS)[number]
-            : undefined,
-        ownership:
-          body.ownership !== undefined
-            ? body.ownership as (typeof EQUIPMENT_OWNERSHIPS)[number]
-            : undefined,
-        purchaseDate:
-          body.purchaseDate !== undefined
-            ? body.purchaseDate
-              ? new Date(body.purchaseDate).toISOString()
-              : null
-            : undefined,
-        purchaseCost:
-          body.purchaseCost !== undefined
-            ? body.purchaseCost !== null
-              ? String(body.purchaseCost)
-              : null
-            : undefined,
-        notes:
-          body.notes !== undefined
-            ? body.notes?.trim() || null
-            : undefined,
-        categoryId:
-          body.categoryId !== undefined
-            ? body.categoryId
-            : undefined,
+    const updateData = {
+      name:
+        body.name !== undefined
+          ? body.name.trim()
+          : undefined,
+      description:
+        body.description !== undefined
+          ? body.description?.trim() || null
+          : undefined,
+      model:
+        body.model !== undefined
+          ? body.model?.trim() || null
+          : undefined,
+      manufacturer:
+        body.manufacturer !== undefined
+          ? body.manufacturer?.trim() || null
+          : undefined,
+      serialNumber:
+        body.serialNumber !== undefined
+          ? body.serialNumber?.trim() || null
+          : undefined,
+      assetNumber:
+        body.assetNumber !== undefined
+          ? body.assetNumber?.trim() || null
+          : undefined,
+      quantity:
+        body.quantity !== undefined
+          ? body.quantity
+          : undefined,
+      status:
+        body.status !== undefined
+          ? body.status as (typeof EQUIPMENT_STATUSES)[number]
+          : undefined,
+      condition:
+        body.condition !== undefined
+          ? body.condition as (typeof EQUIPMENT_CONDITIONS)[number]
+          : undefined,
+      ownership:
+        body.ownership !== undefined
+          ? body.ownership as (typeof EQUIPMENT_OWNERSHIPS)[number]
+          : undefined,
+      purchaseDate:
+        body.purchaseDate !== undefined
+          ? body.purchaseDate
+            ? new Date(body.purchaseDate).toISOString()
+            : null
+          : undefined,
+      purchaseCost:
+        body.purchaseCost !== undefined
+          ? body.purchaseCost !== null
+            ? String(body.purchaseCost)
+            : null
+          : undefined,
+      notes:
+        body.notes !== undefined
+          ? body.notes?.trim() || null
+          : undefined,
+      categoryId:
+        body.categoryId !== undefined
+          ? body.categoryId
+          : undefined,
+    };
+
+    let equipment;
+
+    if (body.quantity === undefined) {
+      equipment = await db.orm.public.Equipment
+        .where({
+          id: equipmentId,
+          organizationId: authContext.organization.id,
+        })
+        .update(updateData);
+    } else {
+      const requestedQuantity = body.quantity;
+
+      equipment = await db.transaction(async (tx) => {
+        const equipmentPlan = db.raw.sql`
+          SELECT
+            "id",
+            "quantity"
+          FROM "equipment"
+          WHERE "id" = ${equipmentId}
+            AND "organizationId" = ${authContext.organization.id}
+          FOR UPDATE
+        `
+          .returnsRow({
+            id: "pg/int4@1",
+            quantity: "pg/int4@1",
+          })
+          .build();
+
+        let lockedEquipment:
+          | {
+              id: number;
+              quantity: number;
+            }
+          | undefined;
+
+        for await (const row of tx.query(equipmentPlan)) {
+          lockedEquipment = row;
+          break;
+        }
+
+        if (!lockedEquipment) {
+          throw new Error("EQUIPMENT_NOT_FOUND");
+        }
+
+        const allocationPlan = db.raw.sql`
+          SELECT
+            COALESCE(SUM("quantity"), 0)::int4
+              AS "activeAllocatedQuantity"
+          FROM "equipmentAssignment"
+          WHERE "equipmentId" = ${equipmentId}
+            AND "status" IN (
+              'PLANNED',
+              'CONFIRMED',
+              'CHECKED_IN'
+            )
+        `
+          .returnsRow({
+            activeAllocatedQuantity: "pg/int4@1",
+          })
+          .build();
+
+        let activeAllocatedQuantity = 0;
+
+        for await (const row of tx.query(allocationPlan)) {
+          activeAllocatedQuantity =
+            Number(row.activeAllocatedQuantity);
+          break;
+        }
+
+        if (requestedQuantity < activeAllocatedQuantity) {
+          throw new Error(
+            `EQUIPMENT_QUANTITY_BELOW_ALLOCATIONS:${requestedQuantity}:${activeAllocatedQuantity}`,
+          );
+        }
+
+        const updated =
+          await tx.orm.public.Equipment
+            .where({
+              id: equipmentId,
+              organizationId: authContext.organization.id,
+            })
+            .update(updateData);
+
+        if (!updated) {
+          throw new Error("EQUIPMENT_NOT_FOUND");
+        }
+
+        return updated;
       });
+    }
 
     if (!equipment) {
       return NextResponse.json(
@@ -327,6 +424,41 @@ export async function PATCH(
 
     if (authorizationResponse) {
       return authorizationResponse;
+    }
+
+    if (
+      error instanceof Error &&
+      error.message === "EQUIPMENT_NOT_FOUND"
+    ) {
+      return NextResponse.json(
+        { error: "Equipment not found." },
+        { status: 404 },
+      );
+    }
+
+    if (
+      error instanceof Error &&
+      error.message.startsWith(
+        "EQUIPMENT_QUANTITY_BELOW_ALLOCATIONS:",
+      )
+    ) {
+      const [
+        ,
+        requestedQuantity,
+        activeAllocatedQuantity,
+      ] = error.message.split(":");
+
+      return NextResponse.json(
+        {
+          error:
+            "Equipment quantity cannot be reduced below active allocations.",
+          requestedQuantity: Number(requestedQuantity),
+          activeAllocatedQuantity: Number(
+            activeAllocatedQuantity,
+          ),
+        },
+        { status: 409 },
+      );
     }
 
     console.error(
