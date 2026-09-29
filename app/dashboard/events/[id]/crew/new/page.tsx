@@ -18,10 +18,6 @@ type Department = {
 const assignmentStatuses = [
   "PLANNED",
   "CONFIRMED",
-  "CHECKED_IN",
-  "COMPLETED",
-  "CANCELLED",
-  "NO_SHOW",
 ];
 
 export default function NewCrewAssignmentPage() {

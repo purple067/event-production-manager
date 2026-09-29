@@ -7,22 +7,19 @@ import {
 } from "../../../../../../src/lib/authorization";
 import { db } from "../../../../../../src/prisma/db";
 
-const allowedStatuses = [
-  "PLANNED",
-  "CONFIRMED",
-  "CHECKED_IN",
-  "COMPLETED",
-  "CANCELLED",
-  "NO_SHOW",
-] as const;
-
 const activeStatuses = [
   "PLANNED",
   "CONFIRMED",
   "CHECKED_IN",
 ] as const;
 
-type AssignmentStatus = (typeof allowedStatuses)[number];
+type AssignmentStatus =
+  | "PLANNED"
+  | "CONFIRMED"
+  | "CHECKED_IN"
+  | "COMPLETED"
+  | "CANCELLED"
+  | "NO_SHOW";
 
 type UpdateAssignmentBody = {
   crewMemberId?: number;
@@ -40,40 +37,6 @@ function isActiveStatus(status: AssignmentStatus) {
   return activeStatuses.includes(
     status as (typeof activeStatuses)[number],
   );
-}
-
-function isValidTransition(
-  current: AssignmentStatus,
-  next: AssignmentStatus,
-) {
-  if (current === next) return true;
-
-  switch (current) {
-    case "PLANNED":
-      return (
-        next === "CONFIRMED" ||
-        next === "CANCELLED" ||
-        next === "NO_SHOW"
-      );
-
-    case "CONFIRMED":
-      return (
-        next === "CHECKED_IN" ||
-        next === "CANCELLED" ||
-        next === "NO_SHOW"
-      );
-
-    case "CHECKED_IN":
-      return next === "COMPLETED";
-
-    case "COMPLETED":
-    case "CANCELLED":
-    case "NO_SHOW":
-      return false;
-
-    default:
-      return false;
-  }
 }
 
 async function getAssignment(
@@ -237,6 +200,16 @@ export async function PATCH(
       );
     }
 
+    if (body.assignmentStatus !== undefined) {
+      return NextResponse.json(
+        {
+          error:
+            "Crew assignment lifecycle status must be changed through the crew lifecycle endpoint.",
+        },
+        { status: 409 },
+      );
+    }
+
     let requestedCrewMemberId =
       existingAssignment.crewMemberId;
 
@@ -286,39 +259,8 @@ export async function PATCH(
       }
     }
 
-    let requestedStatus =
+    const requestedStatus =
       existingAssignment.assignmentStatus as AssignmentStatus;
-
-    if (body.assignmentStatus !== undefined) {
-      if (
-        !allowedStatuses.includes(
-          body.assignmentStatus as AssignmentStatus,
-        )
-      ) {
-        return NextResponse.json(
-          { error: "Invalid assignment status." },
-          { status: 400 },
-        );
-      }
-
-      requestedStatus =
-        body.assignmentStatus as AssignmentStatus;
-    }
-
-    if (
-      !isValidTransition(
-        existingAssignment.assignmentStatus as AssignmentStatus,
-        requestedStatus,
-      )
-    ) {
-      return NextResponse.json(
-        {
-          error: `Invalid crew assignment transition from ${existingAssignment.assignmentStatus} to ${requestedStatus}.`,
-        },
-        { status: 409 },
-      );
-    }
-
     const finalCallTime =
       body.callTime !== undefined
         ? parseDate(body.callTime)
@@ -397,10 +339,6 @@ export async function PATCH(
       updateData.rate = body.rate;
     }
 
-    if (body.assignmentStatus !== undefined) {
-      updateData.assignmentStatus =
-        requestedStatus;
-    }
 
     if (body.callTime !== undefined) {
       updateData.callTime = finalCallTime;

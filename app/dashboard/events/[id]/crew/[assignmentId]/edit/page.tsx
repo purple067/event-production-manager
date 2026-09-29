@@ -30,15 +30,6 @@ type Assignment = {
   notes: string | null;
 };
 
-const statuses = [
-  "PLANNED",
-  "CONFIRMED",
-  "CHECKED_IN",
-  "COMPLETED",
-  "CANCELLED",
-  "NO_SHOW",
-];
-
 const rateUnits = ["DAY", "HOUR", "EVENT", "FIXED"];
 
 export default function EditCrewAssignmentPage() {
@@ -55,7 +46,6 @@ export default function EditCrewAssignmentPage() {
   const [crewMemberId, setCrewMemberId] = useState("");
   const [departmentId, setDepartmentId] = useState("");
   const [role, setRole] = useState("");
-  const [assignmentStatus, setAssignmentStatus] = useState("PLANNED");
   const [callTime, setCallTime] = useState("");
   const [releaseTime, setReleaseTime] = useState("");
   const [rate, setRate] = useState("");
@@ -121,7 +111,6 @@ function toDateTimeLocal(value: string | null) {
           item.departmentId ? String(item.departmentId) : "",
         );
         setRole(item.role ?? "");
-        setAssignmentStatus(item.assignmentStatus);
         setCallTime(toDateTimeLocal(item.callTime));
         setReleaseTime(toDateTimeLocal(item.releaseTime));
         setRate(item.rate ?? "");
@@ -159,7 +148,6 @@ function toDateTimeLocal(value: string | null) {
               ? Number(departmentId)
               : null,
             role: role || null,
-            assignmentStatus,
             callTime: callTime
               ? new Date(callTime).toISOString()
               : null,
@@ -326,20 +314,15 @@ function toDateTimeLocal(value: string | null) {
                 <label className="text-sm font-medium">
                   Status
                 </label>
-
-                <select
-                  value={assignmentStatus}
-                  onChange={(e) =>
-                    setAssignmentStatus(e.target.value)
-                  }
-                  className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+                <div
+                  className="flex min-h-10 items-center rounded-md border bg-muted/50 px-3 py-2 text-sm"
+                  aria-readonly="true"
                 >
-                  {statuses.map((status) => (
-                    <option key={status} value={status}>
-                      {status}
-                    </option>
-                  ))}
-                </select>
+                  {assignment.assignmentStatus}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Lifecycle status is managed through production operations.
+                </p>
               </div>
 
               <div className="space-y-2">
