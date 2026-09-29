@@ -157,30 +157,30 @@ export async function POST(
         ? body.status
         : "PLANNED";
 
-    const allocatedAt =
-      typeof body.allocatedAt === "string" &&
-      body.allocatedAt.trim()
-        ? body.allocatedAt
-        : null;
-
-    const returnedAt =
-      typeof body.returnedAt === "string" &&
-      body.returnedAt.trim()
-        ? body.returnedAt
-        : null;
-
-    const allocatedDate = allocatedAt
-      ? new Date(allocatedAt)
-      : null;
-
-    const returnedDate = returnedAt
-      ? new Date(returnedAt)
-      : null;
-
     const notes =
       typeof body.notes === "string"
         ? body.notes.trim()
         : null;
+
+    if (body.allocatedAt !== undefined) {
+      return NextResponse.json(
+        {
+          error:
+            "Allocation time cannot be set when creating an assignment. Use the equipment operation endpoint.",
+        },
+        { status: 409 },
+      );
+    }
+
+    if (body.returnedAt !== undefined) {
+      return NextResponse.json(
+        {
+          error:
+            "Return time cannot be set when creating an assignment.",
+        },
+        { status: 409 },
+      );
+    }
 
     if (!Number.isInteger(equipmentId) || equipmentId <= 0) {
       return NextResponse.json(
@@ -225,46 +225,6 @@ export async function POST(
         {
           error:
             "New equipment assignments must start as PLANNED or CONFIRMED.",
-        },
-        { status: 400 },
-      );
-    }
-
-    if (returnedAt) {
-      return NextResponse.json(
-        {
-          error:
-            "A new equipment assignment cannot have a return time.",
-        },
-        { status: 400 },
-      );
-    }
-
-    if (allocatedDate && Number.isNaN(allocatedDate.getTime())) {
-      return NextResponse.json(
-        { error: "Invalid allocation date." },
-        { status: 400 },
-      );
-    }
-
-    if (returnedDate && Number.isNaN(returnedDate.getTime())) {
-      return NextResponse.json(
-        { error: "Invalid return date." },
-        { status: 400 },
-      );
-    }
-
-    if (
-      allocatedAt &&
-      returnedAt &&
-      returnedDate &&
-      allocatedDate &&
-      returnedDate < allocatedDate
-    ) {
-      return NextResponse.json(
-        {
-          error:
-            "Return date cannot be earlier than allocation date.",
         },
         { status: 400 },
       );
@@ -398,7 +358,7 @@ export async function POST(
           status as
             | "PLANNED"
             | "CONFIRMED",
-        allocatedAt,
+        allocatedAt: null,
         returnedAt: null,
         notes: notes || null,
       });

@@ -421,6 +421,85 @@ describe("POST /api/events/[id]/equipment", () => {
     });
   });
 
+  it("rejects allocatedAt when creating an assignment", async () => {
+    const response = await POST(
+      postRequest({
+        equipmentId,
+        quantity: 1,
+        status: "PLANNED",
+        allocatedAt: "2030-01-01T10:00:00.000Z",
+      }),
+      {
+        params: Promise.resolve({
+          id: String(eventId),
+        }),
+      },
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error:
+        "Allocation time cannot be set when creating an assignment. Use the equipment operation endpoint.",
+    });
+
+    await expect(
+      db.orm.public.EquipmentAssignment
+        .where({ eventId })
+        .all(),
+    ).resolves.toHaveLength(0);
+  });
+
+  it("rejects returnedAt when creating an assignment", async () => {
+    const response = await POST(
+      postRequest({
+        equipmentId,
+        quantity: 1,
+        status: "PLANNED",
+        returnedAt: "2030-01-01T11:00:00.000Z",
+      }),
+      {
+        params: Promise.resolve({
+          id: String(eventId),
+        }),
+      },
+    );
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error:
+        "Return time cannot be set when creating an assignment.",
+    });
+
+    await expect(
+      db.orm.public.EquipmentAssignment
+        .where({ eventId })
+        .all(),
+    ).resolves.toHaveLength(0);
+  });
+
+  it("creates new assignments without lifecycle timestamps", async () => {
+    const response = await POST(
+      postRequest({
+        equipmentId,
+        quantity: 1,
+        status: "PLANNED",
+      }),
+      {
+        params: Promise.resolve({
+          id: String(eventId),
+        }),
+      },
+    );
+
+    expect(response.status).toBe(201);
+
+    const body = await response.json();
+
+    expect(body.assignment.status).toBe("PLANNED");
+    expect(body.assignment.allocatedAt).toBeNull();
+    expect(body.assignment.returnedAt).toBeNull();
+  });
+
   it("prevents concurrent allocations from exceeding inventory", async () => {
     await createAssignment(8, "PLANNED");
 
