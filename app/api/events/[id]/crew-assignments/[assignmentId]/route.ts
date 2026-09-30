@@ -193,13 +193,6 @@ export async function PATCH(
         };
       }
 
-      if (currentStatus === requestedStatus) {
-        return {
-          kind: "success" as const,
-          assignment,
-        };
-      }
-
       const now = new Date().toISOString();
 
       if (requestedStatus === "CHECKED_IN") {

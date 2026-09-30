@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+
 import {
   authorizationErrorResponse,
   requireCurrentContext,
@@ -32,6 +33,7 @@ export async function PATCH(
 
   try {
     context = await requireCurrentContext();
+
     requireRole(
       context,
       "OWNER",
@@ -81,20 +83,6 @@ export async function PATCH(
     );
   }
 
-  const milestone = await db.orm.public.Milestone
-    .where({
-      id: milestoneIdNumber,
-      eventId,
-    })
-    .first();
-
-  if (!milestone) {
-    return NextResponse.json(
-      { error: "Milestone not found" },
-      { status: 404 },
-    );
-  }
-
   let body: { action?: unknown };
 
   try {
@@ -116,77 +104,182 @@ export async function PATCH(
     );
   }
 
-  if (body.action === "START") {
-    if (milestone.status !== "PLANNED") {
-      return NextResponse.json(
-        {
+  const result = await db.transaction(async (tx) => {
+    const milestone = await tx.orm.public.Milestone
+      .where({
+        id: milestoneIdNumber,
+        eventId,
+      })
+      .first();
+
+    if (!milestone) {
+      return {
+        kind: "not_found" as const,
+      };
+    }
+
+    if (body.action === "START") {
+      if (milestone.status !== "PLANNED") {
+        return {
+          kind: "invalid_transition" as const,
           error: "Only planned milestones can be started",
           currentStatus: milestone.status,
-        },
-        { status: 409 },
-      );
-    }
+        };
+      }
 
-    const updated = await db.orm.public.Milestone
-      .where({
-        id: milestoneIdNumber,
-        eventId,
-      })
-      .update({
-        status: "IN_PROGRESS",
-      });
+      const updatePlan = db.raw.sql`
+        UPDATE "milestone"
+        SET
+          "status" = 'IN_PROGRESS'
+        WHERE "id" = ${milestoneIdNumber}
+          AND "eventId" = ${eventId}
+          AND "status" = 'PLANNED'
+        RETURNING "id"
+      `
+        .returnsRow({
+          id: "pg/int4@1",
+        })
+        .build();
 
-    return NextResponse.json({
-      milestone: updated,
-    });
-  }
+      let updatedId: number | undefined;
 
-  if (body.action === "COMPLETE") {
-    if (milestone.status !== "IN_PROGRESS") {
-      return NextResponse.json(
-        {
-          error: "Only in-progress milestones can be completed",
+      for await (const row of tx.query(updatePlan)) {
+        updatedId = row.id;
+        break;
+      }
+
+      if (updatedId === undefined) {
+        return {
+          kind: "concurrent_transition" as const,
+          error:
+            "Milestone was changed by another operation. Please refresh and try again.",
+        };
+      }
+    } else if (body.action === "COMPLETE") {
+      if (milestone.status !== "IN_PROGRESS") {
+        return {
+          kind: "invalid_transition" as const,
+          error:
+            "Only in-progress milestones can be completed",
           currentStatus: milestone.status,
-        },
-        { status: 409 },
-      );
+        };
+      }
+
+      const endTime = new Date().toISOString();
+
+      const updatePlan = db.raw.sql`
+        UPDATE "milestone"
+        SET
+          "status" = 'COMPLETED',
+          "endTime" = ${endTime}
+        WHERE "id" = ${milestoneIdNumber}
+          AND "eventId" = ${eventId}
+          AND "status" = 'IN_PROGRESS'
+        RETURNING "id"
+      `
+        .returnsRow({
+          id: "pg/int4@1",
+        })
+        .build();
+
+      let updatedId: number | undefined;
+
+      for await (const row of tx.query(updatePlan)) {
+        updatedId = row.id;
+        break;
+      }
+
+      if (updatedId === undefined) {
+        return {
+          kind: "concurrent_transition" as const,
+          error:
+            "Milestone was changed by another operation. Please refresh and try again.",
+        };
+      }
+    } else {
+      if (milestone.status !== "PLANNED") {
+        return {
+          kind: "invalid_transition" as const,
+          error: "Only planned milestones can be skipped",
+          currentStatus: milestone.status,
+        };
+      }
+
+      const updatePlan = db.raw.sql`
+        UPDATE "milestone"
+        SET
+          "status" = 'SKIPPED'
+        WHERE "id" = ${milestoneIdNumber}
+          AND "eventId" = ${eventId}
+          AND "status" = 'PLANNED'
+        RETURNING "id"
+      `
+        .returnsRow({
+          id: "pg/int4@1",
+        })
+        .build();
+
+      let updatedId: number | undefined;
+
+      for await (const row of tx.query(updatePlan)) {
+        updatedId = row.id;
+        break;
+      }
+
+      if (updatedId === undefined) {
+        return {
+          kind: "concurrent_transition" as const,
+          error:
+            "Milestone was changed by another operation. Please refresh and try again.",
+        };
+      }
     }
 
-    const updated = await db.orm.public.Milestone
-      .where({
-        id: milestoneIdNumber,
-        eventId,
-      })
-      .update({
-        status: "COMPLETED",
-        endTime: new Date().toISOString(),
-      });
+    const updatedMilestone =
+      await tx.orm.public.Milestone
+        .where({
+          id: milestoneIdNumber,
+          eventId,
+        })
+        .first();
 
-    return NextResponse.json({
-      milestone: updated,
-    });
+    if (!updatedMilestone) {
+      return {
+        kind: "not_found" as const,
+      };
+    }
+
+    return {
+      kind: "success" as const,
+      milestone: updatedMilestone,
+    };
+  });
+
+  if (result.kind === "not_found") {
+    return NextResponse.json(
+      { error: "Milestone not found" },
+      { status: 404 },
+    );
   }
 
-  if (milestone.status !== "PLANNED") {
+  if (result.kind === "invalid_transition") {
     return NextResponse.json(
       {
-        error: "Only planned milestones can be skipped",
-        currentStatus: milestone.status,
+        error: result.error,
+        currentStatus: result.currentStatus,
       },
       { status: 409 },
     );
   }
 
-  const updated = await db.orm.public.Milestone
-    .where({
-      id: milestoneIdNumber,
-      eventId,
-    })
-    .update({
-      status: "SKIPPED",
-    });
+  if (result.kind === "concurrent_transition") {
+    return NextResponse.json(
+      { error: result.error },
+      { status: 409 },
+    );
+  }
 
   return NextResponse.json({
-    milestone: updated,
+    milestone: result.milestone,
   });
 }

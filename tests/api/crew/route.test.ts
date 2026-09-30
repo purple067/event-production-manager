@@ -1396,6 +1396,106 @@ describe("event crew assignment CRUD", () => {
     expect(persisted?.releaseTime).not.toBeNull();
   });
 
+  it("allows only one concurrent CONFIRMED to CHECKED_IN transition", async () => {
+    await createAssignment("CONFIRMED");
+
+    const requests = [
+      updateAssignmentLifecycle(
+        jsonRequest(
+          `http://localhost/api/events/${eventId}/crew-assignments/${assignmentId}`,
+          "PATCH",
+          {
+            status: "CHECKED_IN",
+          },
+        ),
+        assignmentRouteContext(
+          eventId,
+          assignmentId,
+        ),
+      ),
+      updateAssignmentLifecycle(
+        jsonRequest(
+          `http://localhost/api/events/${eventId}/crew-assignments/${assignmentId}`,
+          "PATCH",
+          {
+            status: "CHECKED_IN",
+          },
+        ),
+        assignmentRouteContext(
+          eventId,
+          assignmentId,
+        ),
+      ),
+    ];
+
+    const responses = await Promise.all(requests);
+    const statuses = responses
+      .map((response) => response.status)
+      .sort();
+
+    expect(statuses).toEqual([200, 409]);
+
+    const persisted =
+      await db.orm.public.CrewAssignment
+        .where({ id: assignmentId })
+        .first();
+
+    expect(persisted?.assignmentStatus).toBe(
+      "CHECKED_IN",
+    );
+    expect(persisted?.callTime).not.toBeNull();
+  });
+
+  it("allows only one concurrent CHECKED_IN to COMPLETED transition", async () => {
+    await createAssignment("CHECKED_IN");
+
+    const requests = [
+      updateAssignmentLifecycle(
+        jsonRequest(
+          `http://localhost/api/events/${eventId}/crew-assignments/${assignmentId}`,
+          "PATCH",
+          {
+            status: "COMPLETED",
+          },
+        ),
+        assignmentRouteContext(
+          eventId,
+          assignmentId,
+        ),
+      ),
+      updateAssignmentLifecycle(
+        jsonRequest(
+          `http://localhost/api/events/${eventId}/crew-assignments/${assignmentId}`,
+          "PATCH",
+          {
+            status: "COMPLETED",
+          },
+        ),
+        assignmentRouteContext(
+          eventId,
+          assignmentId,
+        ),
+      ),
+    ];
+
+    const responses = await Promise.all(requests);
+    const statuses = responses
+      .map((response) => response.status)
+      .sort();
+
+    expect(statuses).toEqual([200, 409]);
+
+    const persisted =
+      await db.orm.public.CrewAssignment
+        .where({ id: assignmentId })
+        .first();
+
+    expect(persisted?.assignmentStatus).toBe(
+      "COMPLETED",
+    );
+    expect(persisted?.releaseTime).not.toBeNull();
+  });
+
   it.each([
     ["COMPLETED", "CONFIRMED"],
     ["CANCELLED", "CONFIRMED"],

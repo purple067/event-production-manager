@@ -17,14 +17,6 @@ const MILESTONE_TYPES = [
   "OTHER",
 ] as const;
 
-const MILESTONE_STATUSES = [
-  "PLANNED",
-  "IN_PROGRESS",
-  "COMPLETED",
-  "SKIPPED",
-  "CANCELLED",
-] as const;
-
 function isValidPositiveInteger(value: unknown): value is number {
   return (
     typeof value === "number" &&
@@ -44,16 +36,6 @@ function isValidMilestoneType(
   );
 }
 
-function isValidMilestoneStatus(
-  value: unknown,
-): value is (typeof MILESTONE_STATUSES)[number] {
-  return (
-    typeof value === "string" &&
-    MILESTONE_STATUSES.includes(
-      value as (typeof MILESTONE_STATUSES)[number],
-    )
-  );
-}
 
 function parseDate(value: unknown): Date | null {
   if (typeof value !== "string" || !value.trim()) {
@@ -208,13 +190,12 @@ export async function POST(
   const status =
     body.status === undefined ? "PLANNED" : body.status;
 
-  if (!isValidMilestoneStatus(status)) {
+  if (status !== "PLANNED") {
     return NextResponse.json(
-      { error: "Invalid milestone status" },
+      { error: "Milestones must be created as PLANNED" },
       { status: 400 },
     );
   }
-
   const startTime = parseDate(body.startTime);
 
   if (!startTime) {

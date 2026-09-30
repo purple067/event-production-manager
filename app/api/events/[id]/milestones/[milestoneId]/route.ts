@@ -17,14 +17,6 @@ const MILESTONE_TYPES = [
   "OTHER",
 ] as const;
 
-const MILESTONE_STATUSES = [
-  "PLANNED",
-  "IN_PROGRESS",
-  "COMPLETED",
-  "SKIPPED",
-  "CANCELLED",
-] as const;
-
 function isValidPositiveInteger(value: unknown): value is number {
   return (
     typeof value === "number" &&
@@ -44,16 +36,6 @@ function isValidMilestoneType(
   );
 }
 
-function isValidMilestoneStatus(
-  value: unknown,
-): value is (typeof MILESTONE_STATUSES)[number] {
-  return (
-    typeof value === "string" &&
-    MILESTONE_STATUSES.includes(
-      value as (typeof MILESTONE_STATUSES)[number],
-    )
-  );
-}
 
 function parseDate(value: unknown): Date | null {
   if (typeof value !== "string" || !value.trim()) {
@@ -239,14 +221,13 @@ export async function PATCH(
   }
 
   if (body.status !== undefined) {
-    if (!isValidMilestoneStatus(body.status)) {
-      return NextResponse.json(
-        { error: "Invalid milestone status" },
-        { status: 400 },
-      );
-    }
-
-    data.status = body.status;
+    return NextResponse.json(
+      {
+        error:
+          "Milestone lifecycle status must be changed through the operation endpoint",
+      },
+      { status: 409 },
+    );
   }
 
   const startTime =

@@ -128,7 +128,6 @@ export default function MilestonesClient({
 
   const [title, setTitle] = useState("");
   const [type, setType] = useState("SETUP");
-  const [status, setStatus] = useState("PLANNED");
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [departmentId, setDepartmentId] = useState("");
@@ -149,7 +148,6 @@ export default function MilestonesClient({
     setEditingId(null);
     setTitle("");
     setType("SETUP");
-    setStatus("PLANNED");
     setStartTime("");
     setEndTime("");
     setDepartmentId("");
@@ -167,7 +165,6 @@ export default function MilestonesClient({
     setEditingId(milestone.id);
     setTitle(milestone.title);
     setType(milestone.type);
-    setStatus(milestone.status);
     setStartTime(toDateTimeLocal(milestone.startTime));
     setEndTime(toDateTimeLocal(milestone.endTime));
     setDepartmentId(
@@ -211,7 +208,6 @@ export default function MilestonesClient({
       const payload = {
         title,
         type,
-        status,
         startTime: new Date(startTime).toISOString(),
         endTime: endTime
           ? new Date(endTime).toISOString()
@@ -381,34 +377,6 @@ export default function MilestonesClient({
 
                     <SelectContent>
                       {MILESTONE_TYPES.map(
-                        ([value, label]) => (
-                          <SelectItem
-                            key={value}
-                            value={value}
-                          >
-                            {label}
-                          </SelectItem>
-                        ),
-                      )}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Status</Label>
-
-                  <Select
-                    value={status}
-                    onValueChange={(value) =>
-                      setStatus(value ?? "")
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select status" />
-                    </SelectTrigger>
-
-                    <SelectContent>
-                      {MILESTONE_STATUSES.map(
                         ([value, label]) => (
                           <SelectItem
                             key={value}
