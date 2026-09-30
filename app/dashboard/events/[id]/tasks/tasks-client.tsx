@@ -19,18 +19,9 @@ import {
   SelectValue,
 } from "../../../../../components/ui/select";
 
-type TaskStatus =
-  | "TODO"
-  | "IN_PROGRESS"
-  | "BLOCKED"
-  | "DONE"
-  | "CANCELLED";
+type TaskStatus = "TODO" | "IN_PROGRESS" | "BLOCKED" | "DONE" | "CANCELLED";
 
-type TaskPriority =
-  | "LOW"
-  | "MEDIUM"
-  | "HIGH"
-  | "CRITICAL";
+type TaskPriority = "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
 
 type Task = {
   id: number;
@@ -69,7 +60,6 @@ type Props = {
 type FormState = {
   title: string;
   description: string;
-  status: TaskStatus;
   priority: TaskPriority;
   dueDate: string;
   departmentId: string;
@@ -80,7 +70,6 @@ type FormState = {
 const initialForm: FormState = {
   title: "",
   description: "",
-  status: "TODO",
   priority: "MEDIUM",
   dueDate: "",
   departmentId: "",
@@ -137,6 +126,7 @@ export default function TasksClient({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deletingTaskId, setDeletingTaskId] = useState<number | null>(null);
+  const [operatingTaskId, setOperatingTaskId] = useState<number | null>(null);
 
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -168,9 +158,7 @@ export default function TasksClient({
       } catch (err) {
         if (cancelled) return;
 
-        setError(
-          err instanceof Error ? err.message : "Failed to load tasks.",
-        );
+        setError(err instanceof Error ? err.message : "Failed to load tasks.");
       } finally {
         if (!cancelled) {
           setLoading(false);
@@ -198,15 +186,10 @@ export default function TasksClient({
     setForm({
       title: task.title,
       description: task.description ?? "",
-      status: task.status,
       priority: task.priority,
       dueDate: toDateTimeLocal(task.dueDate),
-      departmentId: task.departmentId
-        ? String(task.departmentId)
-        : "",
-      crewMemberId: task.crewMemberId
-        ? String(task.crewMemberId)
-        : "",
+      departmentId: task.departmentId ? String(task.departmentId) : "",
+      crewMemberId: task.crewMemberId ? String(task.crewMemberId) : "",
       notes: task.notes ?? "",
     });
     setError("");
@@ -241,17 +224,10 @@ export default function TasksClient({
       const payload = {
         title: form.title.trim(),
         description: form.description.trim() || null,
-        status: form.status,
         priority: form.priority,
-        dueDate: form.dueDate
-          ? new Date(form.dueDate).toISOString()
-          : null,
-        departmentId: form.departmentId
-          ? Number(form.departmentId)
-          : null,
-        crewMemberId: form.crewMemberId
-          ? Number(form.crewMemberId)
-          : null,
+        dueDate: form.dueDate ? new Date(form.dueDate).toISOString() : null,
+        departmentId: form.departmentId ? Number(form.departmentId) : null,
+        crewMemberId: form.crewMemberId ? Number(form.crewMemberId) : null,
         notes: form.notes.trim() || null,
       };
 
@@ -286,11 +262,74 @@ export default function TasksClient({
       const refreshed = await loadTasks();
       setTasks(refreshed);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to save task.",
-      );
+      setError(err instanceof Error ? err.message : "Failed to save task.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  type TaskAction = "START" | "BLOCK" | "COMPLETE" | "RESUME" | "CANCEL";
+
+  async function handleOperation(taskId: number, action: TaskAction) {
+    const actionLabels: Record<TaskAction, string> = {
+      START: "start",
+      BLOCK: "block",
+      COMPLETE: "complete",
+      RESUME: "resume",
+      CANCEL: "cancel",
+    };
+
+    const successLabels: Record<TaskAction, string> = {
+      START: "started",
+      BLOCK: "blocked",
+      COMPLETE: "completed",
+      RESUME: "resumed",
+      CANCEL: "cancelled",
+    };
+
+    if (
+      action === "CANCEL" &&
+      !window.confirm("Are you sure you want to cancel this task?")
+    ) {
+      return;
+    }
+
+    try {
+      setOperatingTaskId(taskId);
+      setError("");
+      setSuccess("");
+
+      const response = await fetch(
+        `/api/events/${eventId}/tasks/${taskId}/operation`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ action }),
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error || `Failed to ${actionLabels[action]} task.`,
+        );
+      }
+
+      setSuccess(`Task ${successLabels[action]} successfully.`);
+
+      const refreshed = await loadTasks();
+      setTasks(refreshed);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : `Failed to ${actionLabels[action]} task.`,
+      );
+    } finally {
+      setOperatingTaskId(null);
     }
   }
 
@@ -306,12 +345,9 @@ export default function TasksClient({
       setError("");
       setSuccess("");
 
-      const response = await fetch(
-        `/api/events/${eventId}/tasks/${taskId}`,
-        {
-          method: "DELETE",
-        },
-      );
+      const response = await fetch(`/api/events/${eventId}/tasks/${taskId}`, {
+        method: "DELETE",
+      });
 
       const data = await response.json();
 
@@ -328,9 +364,7 @@ export default function TasksClient({
       const refreshed = await loadTasks();
       setTasks(refreshed);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to delete task.",
-      );
+      setError(err instanceof Error ? err.message : "Failed to delete task.");
     } finally {
       setDeletingTaskId(null);
     }
@@ -344,16 +378,10 @@ export default function TasksClient({
             Production Tasks
           </h1>
 
-          <p className="text-sm text-muted-foreground">
-            {eventName}
-          </p>
+          <p className="text-sm text-muted-foreground">{eventName}</p>
         </div>
 
-        {!showForm && (
-          <Button onClick={openAddForm}>
-            + Add Task
-          </Button>
-        )}
+        {!showForm && <Button onClick={openAddForm}>+ Add Task</Button>}
       </div>
 
       {error && (
@@ -372,9 +400,7 @@ export default function TasksClient({
         <Card>
           <CardHeader>
             <div className="flex items-center justify-between gap-4">
-              <CardTitle>
-                {editingTaskId ? "Edit Task" : "Add Task"}
-              </CardTitle>
+              <CardTitle>{editingTaskId ? "Edit Task" : "Add Task"}</CardTitle>
 
               <Button
                 type="button"
@@ -388,15 +414,10 @@ export default function TasksClient({
           </CardHeader>
 
           <CardContent>
-            <form
-              onSubmit={handleSubmit}
-              className="space-y-6"
-            >
+            <form onSubmit={handleSubmit} className="space-y-6">
               <div className="grid gap-6 md:grid-cols-2">
                 <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="task-title">
-                    Task Title
-                  </Label>
+                  <Label htmlFor="task-title">Task Title</Label>
 
                   <Input
                     id="task-title"
@@ -413,9 +434,7 @@ export default function TasksClient({
                 </div>
 
                 <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="task-description">
-                    Description
-                  </Label>
+                  <Label htmlFor="task-description">Description</Label>
 
                   <textarea
                     id="task-description"
@@ -430,46 +449,6 @@ export default function TasksClient({
                     disabled={saving}
                     className="min-h-24 w-full rounded-md border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
                   />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Status</Label>
-
-                  <Select
-                    value={form.status}
-                    onValueChange={(value) =>
-                      setForm({
-                        ...form,
-                        status: (value ?? "TODO") as TaskStatus,
-                      })
-                    }
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-
-                    <SelectContent>
-                      <SelectItem value="TODO">
-                        To Do
-                      </SelectItem>
-
-                      <SelectItem value="IN_PROGRESS">
-                        In Progress
-                      </SelectItem>
-
-                      <SelectItem value="BLOCKED">
-                        Blocked
-                      </SelectItem>
-
-                      <SelectItem value="DONE">
-                        Done
-                      </SelectItem>
-
-                      <SelectItem value="CANCELLED">
-                        Cancelled
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
                 </div>
 
                 <div className="space-y-2">
@@ -489,29 +468,19 @@ export default function TasksClient({
                     </SelectTrigger>
 
                     <SelectContent>
-                      <SelectItem value="LOW">
-                        Low
-                      </SelectItem>
+                      <SelectItem value="LOW">Low</SelectItem>
 
-                      <SelectItem value="MEDIUM">
-                        Medium
-                      </SelectItem>
+                      <SelectItem value="MEDIUM">Medium</SelectItem>
 
-                      <SelectItem value="HIGH">
-                        High
-                      </SelectItem>
+                      <SelectItem value="HIGH">High</SelectItem>
 
-                      <SelectItem value="CRITICAL">
-                        Critical
-                      </SelectItem>
+                      <SelectItem value="CRITICAL">Critical</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="task-due-date">
-                    Due Date & Time
-                  </Label>
+                  <Label htmlFor="task-due-date">Due Date & Time</Label>
 
                   <Input
                     id="task-due-date"
@@ -574,14 +543,9 @@ export default function TasksClient({
 
                     <SelectContent>
                       {crewMembers.map((crew) => (
-                        <SelectItem
-                          key={crew.id}
-                          value={String(crew.id)}
-                        >
+                        <SelectItem key={crew.id} value={String(crew.id)}>
                           {crew.name}
-                          {crew.designation
-                            ? ` · ${crew.designation}`
-                            : ""}
+                          {crew.designation ? ` · ${crew.designation}` : ""}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -589,9 +553,7 @@ export default function TasksClient({
                 </div>
 
                 <div className="space-y-2 md:col-span-2">
-                  <Label htmlFor="task-notes">
-                    Notes
-                  </Label>
+                  <Label htmlFor="task-notes">Notes</Label>
 
                   <textarea
                     id="task-notes"
@@ -619,10 +581,7 @@ export default function TasksClient({
                   Cancel
                 </Button>
 
-                <Button
-                  type="submit"
-                  disabled={saving}
-                >
+                <Button type="submit" disabled={saving}>
                   {saving
                     ? "Saving..."
                     : editingTaskId
@@ -637,30 +596,21 @@ export default function TasksClient({
 
       <Card>
         <CardHeader>
-          <CardTitle>
-            Tasks ({tasks.length})
-          </CardTitle>
+          <CardTitle>Tasks ({tasks.length})</CardTitle>
         </CardHeader>
 
         <CardContent>
           {loading ? (
-            <p className="text-sm text-muted-foreground">
-              Loading tasks...
-            </p>
+            <p className="text-sm text-muted-foreground">Loading tasks...</p>
           ) : tasks.length === 0 ? (
             <div className="rounded-md border border-dashed p-8 text-center">
-              <p className="font-medium">
-                No production tasks yet.
-              </p>
+              <p className="font-medium">No production tasks yet.</p>
 
               <p className="mt-1 text-sm text-muted-foreground">
                 Add your first production task to start planning.
               </p>
 
-              <Button
-                className="mt-4"
-                onClick={openAddForm}
-              >
+              <Button className="mt-4" onClick={openAddForm}>
                 + Add Task
               </Button>
             </div>
@@ -676,24 +626,17 @@ export default function TasksClient({
                 );
 
                 return (
-                  <div
-                    key={task.id}
-                    className="rounded-lg border p-4"
-                  >
+                  <div key={task.id} className="rounded-lg border p-4">
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="font-medium">
-                            {task.title}
-                          </h3>
+                          <h3 className="font-medium">{task.title}</h3>
 
                           <Badge variant="outline">
                             {statusLabel(task.status)}
                           </Badge>
 
-                          <Badge>
-                            {priorityLabel(task.priority)}
-                          </Badge>
+                          <Badge>{priorityLabel(task.priority)}</Badge>
                         </div>
 
                         {task.description && (
@@ -704,37 +647,138 @@ export default function TasksClient({
 
                         <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-muted-foreground">
                           {department && (
-                            <span>
-                              Department: {department.name}
-                            </span>
+                            <span>Department: {department.name}</span>
                           )}
 
-                          {crew && (
-                            <span>
-                              Crew: {crew.name}
-                            </span>
-                          )}
+                          {crew && <span>Crew: {crew.name}</span>}
 
-                          <span>
-                            Due: {formatDateTime(task.dueDate)}
-                          </span>
+                          <span>Due: {formatDateTime(task.dueDate)}</span>
                         </div>
 
                         {task.notes && (
                           <p className="mt-3 rounded-md bg-muted/50 px-3 py-2 text-sm">
-                            <span className="font-medium">
-                              Notes:
-                            </span>{" "}
+                            <span className="font-medium">Notes:</span>{" "}
                             {task.notes}
                           </p>
                         )}
                       </div>
 
-                      <div className="flex shrink-0 gap-2">
+                      <div className="flex shrink-0 flex-wrap justify-end gap-2">
+                        {task.status === "TODO" && (
+                          <>
+                            <Button
+                              variant="default"
+                              onClick={() => handleOperation(task.id, "START")}
+                              disabled={
+                                operatingTaskId === task.id ||
+                                deletingTaskId === task.id
+                              }
+                            >
+                              {operatingTaskId === task.id
+                                ? "Working..."
+                                : "Start"}
+                            </Button>
+
+                            <Button
+                              variant="outline"
+                              onClick={() => handleOperation(task.id, "BLOCK")}
+                              disabled={
+                                operatingTaskId === task.id ||
+                                deletingTaskId === task.id
+                              }
+                            >
+                              Block
+                            </Button>
+
+                            <Button
+                              variant="outline"
+                              onClick={() => handleOperation(task.id, "CANCEL")}
+                              disabled={
+                                operatingTaskId === task.id ||
+                                deletingTaskId === task.id
+                              }
+                            >
+                              Cancel
+                            </Button>
+                          </>
+                        )}
+
+                        {task.status === "IN_PROGRESS" && (
+                          <>
+                            <Button
+                              variant="default"
+                              onClick={() =>
+                                handleOperation(task.id, "COMPLETE")
+                              }
+                              disabled={
+                                operatingTaskId === task.id ||
+                                deletingTaskId === task.id
+                              }
+                            >
+                              {operatingTaskId === task.id
+                                ? "Working..."
+                                : "Complete"}
+                            </Button>
+
+                            <Button
+                              variant="outline"
+                              onClick={() => handleOperation(task.id, "BLOCK")}
+                              disabled={
+                                operatingTaskId === task.id ||
+                                deletingTaskId === task.id
+                              }
+                            >
+                              Block
+                            </Button>
+
+                            <Button
+                              variant="outline"
+                              onClick={() => handleOperation(task.id, "CANCEL")}
+                              disabled={
+                                operatingTaskId === task.id ||
+                                deletingTaskId === task.id
+                              }
+                            >
+                              Cancel
+                            </Button>
+                          </>
+                        )}
+
+                        {task.status === "BLOCKED" && (
+                          <>
+                            <Button
+                              variant="default"
+                              onClick={() => handleOperation(task.id, "RESUME")}
+                              disabled={
+                                operatingTaskId === task.id ||
+                                deletingTaskId === task.id
+                              }
+                            >
+                              {operatingTaskId === task.id
+                                ? "Working..."
+                                : "Resume"}
+                            </Button>
+
+                            <Button
+                              variant="outline"
+                              onClick={() => handleOperation(task.id, "CANCEL")}
+                              disabled={
+                                operatingTaskId === task.id ||
+                                deletingTaskId === task.id
+                              }
+                            >
+                              Cancel
+                            </Button>
+                          </>
+                        )}
+
                         <Button
                           variant="outline"
                           onClick={() => openEditForm(task)}
-                          disabled={deletingTaskId === task.id}
+                          disabled={
+                            operatingTaskId === task.id ||
+                            deletingTaskId === task.id
+                          }
                         >
                           Edit
                         </Button>
@@ -742,7 +786,7 @@ export default function TasksClient({
                         <Button
                           variant="destructive"
                           onClick={() => handleDelete(task.id)}
-                          disabled={deletingTaskId === task.id}
+                          disabled={operatingTaskId === task.id}
                         >
                           {deletingTaskId === task.id
                             ? "Deleting..."

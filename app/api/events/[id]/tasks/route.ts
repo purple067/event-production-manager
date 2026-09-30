@@ -15,12 +15,7 @@ const TASK_STATUSES = [
   "CANCELLED",
 ] as const;
 
-const TASK_PRIORITIES = [
-  "LOW",
-  "MEDIUM",
-  "HIGH",
-  "CRITICAL",
-] as const;
+const TASK_PRIORITIES = ["LOW", "MEDIUM", "HIGH", "CRITICAL"] as const;
 
 type RouteProps = {
   params: Promise<{
@@ -28,7 +23,9 @@ type RouteProps = {
   }>;
 };
 
-function isValidStatus(value: unknown): value is (typeof TASK_STATUSES)[number] {
+function isValidStatus(
+  value: unknown,
+): value is (typeof TASK_STATUSES)[number] {
   return (
     typeof value === "string" &&
     TASK_STATUSES.includes(value as (typeof TASK_STATUSES)[number])
@@ -45,11 +42,7 @@ function isValidPriority(
 }
 
 function isValidPositiveInteger(value: unknown): value is number {
-  return (
-    typeof value === "number" &&
-    Number.isInteger(value) &&
-    value > 0
-  );
+  return typeof value === "number" && Number.isInteger(value) && value > 0;
 }
 
 function isValidDate(value: unknown) {
@@ -60,17 +53,13 @@ function isValidDate(value: unknown) {
   return !Number.isNaN(new Date(value).getTime());
 }
 
-export async function GET(
-  _request: Request,
-  { params }: RouteProps,
-) {
+export async function GET(_request: Request, { params }: RouteProps) {
   let context;
 
   try {
     context = await requireCurrentContext();
   } catch (error) {
-    const authorizationResponse =
-      authorizationErrorResponse(error);
+    const authorizationResponse = authorizationErrorResponse(error);
 
     if (authorizationResponse) {
       return authorizationResponse;
@@ -83,30 +72,21 @@ export async function GET(
   const eventId = Number(id);
 
   if (!isValidPositiveInteger(eventId)) {
-    return NextResponse.json(
-      { error: "Invalid event ID" },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "Invalid event ID" }, { status: 400 });
   }
 
-  const event = await db.orm.public.Event
-    .where({
-      id: eventId,
-      organizationId: context.organization.id,
-    })
-    .first();
+  const event = await db.orm.public.Event.where({
+    id: eventId,
+    organizationId: context.organization.id,
+  }).first();
 
   if (!event) {
-    return NextResponse.json(
-      { error: "Event not found" },
-      { status: 404 },
-    );
+    return NextResponse.json({ error: "Event not found" }, { status: 404 });
   }
 
-  const tasks = await db.orm.public.ProductionTask
-    .where({
-      eventId,
-    })
+  const tasks = await db.orm.public.ProductionTask.where({
+    eventId,
+  })
     .orderBy((task) => task.createdAt.desc())
     .all();
 
@@ -116,24 +96,14 @@ export async function GET(
   });
 }
 
-export async function POST(
-  request: Request,
-  { params }: RouteProps,
-) {
+export async function POST(request: Request, { params }: RouteProps) {
   let context;
 
   try {
     context = await requireCurrentContext();
-    requireRole(
-      context,
-      "OWNER",
-      "ADMIN",
-      "PRODUCER",
-      "PRODUCTION_MANAGER",
-    );
+    requireRole(context, "OWNER", "ADMIN", "PRODUCER", "PRODUCTION_MANAGER");
   } catch (error) {
-    const authorizationResponse =
-      authorizationErrorResponse(error);
+    const authorizationResponse = authorizationErrorResponse(error);
 
     if (authorizationResponse) {
       return authorizationResponse;
@@ -146,24 +116,16 @@ export async function POST(
   const eventId = Number(id);
 
   if (!isValidPositiveInteger(eventId)) {
-    return NextResponse.json(
-      { error: "Invalid event ID" },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "Invalid event ID" }, { status: 400 });
   }
 
-  const event = await db.orm.public.Event
-    .where({
-      id: eventId,
-      organizationId: context.organization.id,
-    })
-    .first();
+  const event = await db.orm.public.Event.where({
+    id: eventId,
+    organizationId: context.organization.id,
+  }).first();
 
   if (!event) {
-    return NextResponse.json(
-      { error: "Event not found" },
-      { status: 404 },
-    );
+    return NextResponse.json({ error: "Event not found" }, { status: 404 });
   }
 
   let body: unknown;
@@ -171,10 +133,7 @@ export async function POST(
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json(
-      { error: "Invalid JSON body" },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
   if (!body || typeof body !== "object") {
@@ -186,16 +145,10 @@ export async function POST(
 
   const data = body as Record<string, unknown>;
 
-  const title =
-    typeof data.title === "string"
-      ? data.title.trim()
-      : "";
+  const title = typeof data.title === "string" ? data.title.trim() : "";
 
   if (!title) {
-    return NextResponse.json(
-      { error: "Title is required" },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "Title is required" }, { status: 400 });
   }
 
   const description =
@@ -217,7 +170,6 @@ export async function POST(
   }
 
   const status = data.status ?? "TODO";
-
   if (!isValidStatus(status)) {
     return NextResponse.json(
       {
@@ -228,6 +180,15 @@ export async function POST(
     );
   }
 
+  if (status !== "TODO") {
+    return NextResponse.json(
+      {
+        error:
+          "New production tasks must start in TODO status. Use the lifecycle operation endpoint to change status.",
+      },
+      { status: 400 },
+    );
+  }
   const priority = data.priority ?? "MEDIUM";
 
   if (!isValidPriority(priority)) {
@@ -244,10 +205,7 @@ export async function POST(
 
   if (data.dueDate !== undefined && data.dueDate !== null) {
     if (!isValidDate(data.dueDate)) {
-      return NextResponse.json(
-        { error: "Invalid due date" },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: "Invalid due date" }, { status: 400 });
     }
 
     dueDate = new Date(data.dueDate as string).toISOString();
@@ -263,12 +221,10 @@ export async function POST(
       );
     }
 
-    const department = await db.orm.public.Department
-      .where({
-        id: data.departmentId,
-        eventId,
-      })
-      .first();
+    const department = await db.orm.public.Department.where({
+      id: data.departmentId,
+      eventId,
+    }).first();
 
     if (!department) {
       return NextResponse.json(
@@ -290,12 +246,10 @@ export async function POST(
       );
     }
 
-    const crewMember = await db.orm.public.CrewMember
-      .where({
-        id: data.crewMemberId,
-        organizationId: context.organization.id,
-      })
-      .first();
+    const crewMember = await db.orm.public.CrewMember.where({
+      id: data.crewMemberId,
+      organizationId: context.organization.id,
+    }).first();
 
     if (!crewMember) {
       return NextResponse.json(
@@ -337,8 +291,5 @@ export async function POST(
     crewMemberId,
   });
 
-  return NextResponse.json(
-    { task },
-    { status: 201 },
-  );
+  return NextResponse.json({ task }, { status: 201 });
 }

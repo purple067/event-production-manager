@@ -7,11 +7,7 @@ import {
 import { db } from "../../../../../../src/prisma/db";
 
 function isValidPositiveInteger(value: unknown): value is number {
-  return (
-    typeof value === "number" &&
-    Number.isInteger(value) &&
-    value > 0
-  );
+  return typeof value === "number" && Number.isInteger(value) && value > 0;
 }
 
 async function getTaskContext(
@@ -19,23 +15,19 @@ async function getTaskContext(
   taskId: number,
   organizationId: number,
 ) {
-  const event = await db.orm.public.Event
-    .where({
-      id: eventId,
-      organizationId,
-    })
-    .first();
+  const event = await db.orm.public.Event.where({
+    id: eventId,
+    organizationId,
+  }).first();
 
   if (!event) {
     return null;
   }
 
-  const task = await db.orm.public.ProductionTask
-    .where({
-      id: taskId,
-      eventId,
-    })
-    .first();
+  const task = await db.orm.public.ProductionTask.where({
+    id: taskId,
+    eventId,
+  }).first();
 
   if (!task) {
     return null;
@@ -60,8 +52,7 @@ export async function GET(
   try {
     context = await requireCurrentContext();
   } catch (error) {
-    const authorizationResponse =
-      authorizationErrorResponse(error);
+    const authorizationResponse = authorizationErrorResponse(error);
 
     if (authorizationResponse) {
       return authorizationResponse;
@@ -94,10 +85,7 @@ export async function GET(
   );
 
   if (!result) {
-    return NextResponse.json(
-      { error: "Task not found." },
-      { status: 404 },
-    );
+    return NextResponse.json({ error: "Task not found." }, { status: 404 });
   }
 
   return NextResponse.json({
@@ -117,16 +105,9 @@ export async function PATCH(
 
   try {
     context = await requireCurrentContext();
-    requireRole(
-      context,
-      "OWNER",
-      "ADMIN",
-      "PRODUCER",
-      "PRODUCTION_MANAGER",
-    );
+    requireRole(context, "OWNER", "ADMIN", "PRODUCER", "PRODUCTION_MANAGER");
   } catch (error) {
-    const authorizationResponse =
-      authorizationErrorResponse(error);
+    const authorizationResponse = authorizationErrorResponse(error);
 
     if (authorizationResponse) {
       return authorizationResponse;
@@ -159,10 +140,7 @@ export async function PATCH(
   );
 
   if (!result) {
-    return NextResponse.json(
-      { error: "Task not found." },
-      { status: 404 },
-    );
+    return NextResponse.json({ error: "Task not found." }, { status: 404 });
   }
 
   let body: {
@@ -179,26 +157,13 @@ export async function PATCH(
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json(
-      { error: "Invalid JSON body." },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
   }
 
   const data: {
     title?: string;
     description?: string | null;
-    status?:
-      | "TODO"
-      | "IN_PROGRESS"
-      | "BLOCKED"
-      | "DONE"
-      | "CANCELLED";
-    priority?:
-      | "LOW"
-      | "MEDIUM"
-      | "HIGH"
-      | "CRITICAL";
+    priority?: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
     dueDate?: string | null;
     departmentId?: number | null;
     crewMemberId?: number | null;
@@ -206,10 +171,7 @@ export async function PATCH(
   } = {};
 
   if (body.title !== undefined) {
-    if (
-      typeof body.title !== "string" ||
-      !body.title.trim()
-    ) {
+    if (typeof body.title !== "string" || !body.title.trim()) {
       return NextResponse.json(
         { error: "Title must be a non-empty string." },
         { status: 400 },
@@ -220,10 +182,7 @@ export async function PATCH(
   }
 
   if (body.description !== undefined) {
-    if (
-      body.description !== null &&
-      typeof body.description !== "string"
-    ) {
+    if (body.description !== null && typeof body.description !== "string") {
       return NextResponse.json(
         {
           error: "Description must be a string or null.",
@@ -233,44 +192,22 @@ export async function PATCH(
     }
 
     data.description =
-      typeof body.description === "string" &&
-      body.description.trim()
+      typeof body.description === "string" && body.description.trim()
         ? body.description.trim()
         : null;
   }
 
   if (body.status !== undefined) {
-    const validStatuses = [
-      "TODO",
-      "IN_PROGRESS",
-      "BLOCKED",
-      "DONE",
-      "CANCELLED",
-    ] as const;
-
-    if (
-      typeof body.status !== "string" ||
-      !validStatuses.includes(
-        body.status as (typeof validStatuses)[number],
-      )
-    ) {
-      return NextResponse.json(
-        { error: "Invalid task status." },
-        { status: 400 },
-      );
-    }
-
-    data.status =
-      body.status as (typeof validStatuses)[number];
+    return NextResponse.json(
+      {
+        error:
+          "Task status can only be changed through the lifecycle operation endpoint.",
+      },
+      { status: 409 },
+    );
   }
-
   if (body.priority !== undefined) {
-    const validPriorities = [
-      "LOW",
-      "MEDIUM",
-      "HIGH",
-      "CRITICAL",
-    ] as const;
+    const validPriorities = ["LOW", "MEDIUM", "HIGH", "CRITICAL"] as const;
 
     if (
       typeof body.priority !== "string" ||
@@ -284,8 +221,7 @@ export async function PATCH(
       );
     }
 
-    data.priority =
-      body.priority as (typeof validPriorities)[number];
+    data.priority = body.priority as (typeof validPriorities)[number];
   }
 
   if (body.dueDate !== undefined) {
@@ -314,18 +250,15 @@ export async function PATCH(
     if (body.departmentId === null) {
       data.departmentId = null;
     } else if (isValidPositiveInteger(body.departmentId)) {
-      const department = await db.orm.public.Department
-        .where({
-          id: body.departmentId,
-          eventId,
-        })
-        .first();
+      const department = await db.orm.public.Department.where({
+        id: body.departmentId,
+        eventId,
+      }).first();
 
       if (!department) {
         return NextResponse.json(
           {
-            error:
-              "Department does not belong to this event.",
+            error: "Department does not belong to this event.",
           },
           { status: 400 },
         );
@@ -335,8 +268,7 @@ export async function PATCH(
     } else {
       return NextResponse.json(
         {
-          error:
-            "departmentId must be a positive integer or null.",
+          error: "departmentId must be a positive integer or null.",
         },
         { status: 400 },
       );
@@ -347,18 +279,15 @@ export async function PATCH(
     if (body.crewMemberId === null) {
       data.crewMemberId = null;
     } else if (isValidPositiveInteger(body.crewMemberId)) {
-      const crewMember = await db.orm.public.CrewMember
-        .where({
-          id: body.crewMemberId,
-          organizationId: context.organization.id,
-        })
-        .first();
+      const crewMember = await db.orm.public.CrewMember.where({
+        id: body.crewMemberId,
+        organizationId: context.organization.id,
+      }).first();
 
       if (!crewMember) {
         return NextResponse.json(
           {
-            error:
-              "Crew member does not belong to this organization.",
+            error: "Crew member does not belong to this organization.",
           },
           { status: 400 },
         );
@@ -368,8 +297,7 @@ export async function PATCH(
     } else {
       return NextResponse.json(
         {
-          error:
-            "crewMemberId must be a positive integer or null.",
+          error: "crewMemberId must be a positive integer or null.",
         },
         { status: 400 },
       );
@@ -377,10 +305,7 @@ export async function PATCH(
   }
 
   if (body.notes !== undefined) {
-    if (
-      body.notes !== null &&
-      typeof body.notes !== "string"
-    ) {
+    if (body.notes !== null && typeof body.notes !== "string") {
       return NextResponse.json(
         { error: "Notes must be a string or null." },
         { status: 400 },
@@ -388,8 +313,7 @@ export async function PATCH(
     }
 
     data.notes =
-      typeof body.notes === "string" &&
-      body.notes.trim()
+      typeof body.notes === "string" && body.notes.trim()
         ? body.notes.trim()
         : null;
   }
@@ -401,18 +325,13 @@ export async function PATCH(
     );
   }
 
-  const task = await db.orm.public.ProductionTask
-    .where({
-      id: parsedTaskId,
-      eventId,
-    })
-    .update(data);
+  const task = await db.orm.public.ProductionTask.where({
+    id: parsedTaskId,
+    eventId,
+  }).update(data);
 
   if (!task) {
-    return NextResponse.json(
-      { error: "Task not found." },
-      { status: 404 },
-    );
+    return NextResponse.json({ error: "Task not found." }, { status: 404 });
   }
 
   return NextResponse.json({
@@ -432,16 +351,9 @@ export async function DELETE(
 
   try {
     context = await requireCurrentContext();
-    requireRole(
-      context,
-      "OWNER",
-      "ADMIN",
-      "PRODUCER",
-      "PRODUCTION_MANAGER",
-    );
+    requireRole(context, "OWNER", "ADMIN", "PRODUCER", "PRODUCTION_MANAGER");
   } catch (error) {
-    const authorizationResponse =
-      authorizationErrorResponse(error);
+    const authorizationResponse = authorizationErrorResponse(error);
 
     if (authorizationResponse) {
       return authorizationResponse;
@@ -474,24 +386,16 @@ export async function DELETE(
   );
 
   if (!result) {
-    return NextResponse.json(
-      { error: "Task not found." },
-      { status: 404 },
-    );
+    return NextResponse.json({ error: "Task not found." }, { status: 404 });
   }
 
-  const deletedTask = await db.orm.public.ProductionTask
-    .where({
-      id: parsedTaskId,
-      eventId,
-    })
-    .delete();
+  const deletedTask = await db.orm.public.ProductionTask.where({
+    id: parsedTaskId,
+    eventId,
+  }).delete();
 
   if (!deletedTask) {
-    return NextResponse.json(
-      { error: "Task not found." },
-      { status: 404 },
-    );
+    return NextResponse.json({ error: "Task not found." }, { status: 404 });
   }
 
   return NextResponse.json({
